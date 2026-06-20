@@ -357,11 +357,12 @@
     \number\c@year
   \fi}
 
-\def\ipsj@month{%
-  \ifcase\c@month
+\def\ipsj@month{{%
+  \@tempcnta\ifnum\c@month<\z@ \c@number\else\c@month\fi\relax
+  \ifcase\@tempcnta ???%
     \or Jan.\or Feb.\or Mar.\or Apr.\or May\or June%
     \or July\or Aug.\or Sep.\or Oct.\or Nov.\or Dec.%
-  \else ---\fi}
+  \else ???\fi}}
 
 \def\@monthyear{\ipsj@month\hskip.5\Cwd\ipsj@year}
 \def\@footyear{\ipsj@year}
@@ -725,7 +726,16 @@
 \ifDS@english\else
   \let\受付\received \let\採録\accepted
   \let\再受付\rereceived \let\再再受付\rerereceived
+  \let\発表\Presented
 \fi
+
+%% Japanese-named aliases of the volume/number/month counters, so that
+%% \setcounter{巻数}{...} etc. (as used by the official sample documents)
+%% directly manipulate \c@volume/\c@number/\c@month.
+\expandafter\let\csname c@巻数\endcsname\c@volume
+\expandafter\let\csname c@号数\endcsname\c@number
+\expandafter\let\csname c@月数\endcsname\c@month
+\expandafter\let\csname c@年数\endcsname\c@year
 
 %% =================================================================
 %% 12. \maketitle / \@maketitle / \authortitle
@@ -1213,6 +1223,110 @@
 \def\twocolfig#1{\hbox to\columnwidth{\hbox to\textwidth{\hss#1\hss}\hss}}
 
 %% =================================================================
+%% 15b. \figref/\tabref, \Editor, \urlj/\urle/\doi, \acknowledgment,
+%%      capitalised list-environment variants
+%% =================================================================
+
+%% \< is a pTeX-era kerning/boundary hint with no luatexja equivalent
+%% need; treated as a no-op so existing source text using it still
+%% compiles unchanged.
+\let\<\relax
+
+%% Full-width colon set to a fixed 1zw width and protected from line
+%% breaking before it.
+\ifDS@english\else
+  \def\：{\nobreak\protect\makebox[1\zw][l]{：}\ignorespaces}
+\fi
+
+\def\CaptionType{\def\@captype}
+
+%% --- \figref/\tabref family -----------------------------------------
+\def\long@fig{\ifDS@english Figure~\nobreak\else\figurename~\nobreak\fi}
+\def\short@fig{\ifDS@english Fig.\,\nobreak\else\figurename~\nobreak\fi}
+\def\long@figs{\ifDS@english Figures~\nobreak\else\figurename~\nobreak\fi}
+\def\short@figs{\ifDS@english Figs.\,\nobreak\else\figurename~\nobreak\fi}
+\def\long@tab{\ifDS@english Table~\else\tablename~\nobreak\fi}
+\def\short@tab{\ifDS@english Table~\else\tablename~\nobreak\fi}
+\def\long@tabs{\ifDS@english Tables~\else\tablename~\nobreak\fi}
+\def\short@tabs{\ifDS@english Tables~\else\tablename~\nobreak\fi}
+
+\def\Figref{\bgroup\let\prefix@figtabref\long@fig\@ifstar\figtabref@star\figtabref@}
+\def\figref{\bgroup\let\prefix@figtabref\short@fig\@ifstar\figtabref@star\figtabref@}
+\def\Figsref{\bgroup\let\prefix@figtabref\long@figs\@ifstar\figtabref@star\figtabref@}
+\def\figsref{\bgroup\let\prefix@figtabref\short@figs\@ifstar\figtabref@star\figtabref@}
+\def\Tabref{\bgroup\let\prefix@figtabref\long@tab\@ifstar\figtabref@star\figtabref@}
+\def\tabref{\bgroup\let\prefix@figtabref\short@tab\@ifstar\figtabref@star\figtabref@}
+\def\Tabsref{\bgroup\let\prefix@figtabref\long@tabs\@ifstar\figtabref@star\figtabref@}
+\def\tabsref{\bgroup\let\prefix@figtabref\short@tabs\@ifstar\figtabref@star\figtabref@}
+
+%% The first reference to a given figure/table label is set bold; any
+%% later reference to the same label is set in the normal weight.
+\def\figtabref@star#1{\prefix@figtabref\ref{#1}\egroup}
+\def\figtabref@#1{%
+  \let\bf@or@normal\normalfont
+  \@ifundefined{ipsj@used@#1}{%
+    \expandafter\gdef\csname ipsj@used@#1\endcsname{1}%
+    \let\bf@or@normal\bfseries}{}%
+  \bf@or@normal\prefix@figtabref\ref{#1}\egroup}
+
+%% --- Editor-in-charge (TOD/TBIO/CVA/SLDM) -----------------------------
+\def\Ediname{\csname ipsj@ediname@\@iptype\endcsname}
+\def\ipsj@ediname@DAM{\ifDS@english Editor in Charge:\else 担当編集委員\fi}
+\def\ipsj@ediname@TBIO{Communicated by}
+\def\ipsj@ediname@CVA{Communicated by}
+\def\ipsj@ediname@SLDM{\ifDS@invited Invited by Editor-in-Chief:%
+  \else Recommended by Associate Editor:\fi}
+\let\ipsj@ediname@TOD\ipsj@ediname@DAM
+\def\Edifont{\normalfont\normalsize}
+\def\Editor#1{%
+  \vspace{-.5\baselineskip}%
+  \ifDS@english
+    \noindent\hfill({\Edifont\Ediname})\hskip.5em\textit{#1})%
+  \else
+    \noindent\hfill（{\Edifont\Ediname}）\hskip1\zw#1）%
+  \fi}
+
+%% --- URLs / DOIs / access dates in bibliography entries --------------
+\def\urlj{\@ifnextchar[{\ipsj@n@urlj}{\ipsj@@urlj}}
+\def\ipsj@n@urlj[#1]#2{\normalfont
+  \if#11入手先\\ \fi
+  $\langle$\nobreak{#2}\nobreak$\rangle$}
+\def\ipsj@@urlj#1{\normalfont 入手先$\langle$\nobreak{#1}\nobreak$\rangle$}
+\def\urle{\@ifnextchar[{\ipsj@n@urle}{\ipsj@@urle}}
+\def\ipsj@n@urle[#1]#2{\normalfont
+  \if#11available\\ from\else\if#12available from\\ \fi\fi
+  $\langle$\nobreak{#2}\nobreak$\rangle$}
+\def\ipsj@@urle#1{\normalfont available from $\langle$\nobreak{#1}\nobreak$\rangle$}
+\def\refdatej#1{\normalfont（参照{#1}）}
+\def\refdatee#1{\normalfont(accessed {#1})}
+\def\doi#1{\normalfont DOI: #1}
+
+%% --- Acknowledgments --------------------------------------------------
+%% \end{acknowledgment} looks up \endacknowledgment via \csname, which
+%% auto-defines it to \relax when absent -- intentionally not defined.
+\def\acknowledgment{\par
+  \ifDS@english{\bfseries Acknowledgments}\hskip1em\ignorespaces%
+  \else{\bfseries 謝辞}\hskip1\zw\ignorespaces\fi}
+
+%% --- Capitalised list-environment variants --------------------------
+%% The original class gives Enumerate/ENUMERATE/enumerate* etc. their
+%% own tightened or loosened margins via low-level \@trivlist plumbing.
+%% That margin tuning is a cosmetic nicety, not a structural difference,
+%% so these are kept as plain aliases of the standard environments.
+\let\Enumerate\enumerate \let\endEnumerate\endenumerate
+\let\Itemize\itemize \let\endItemize\enditemize
+\let\Description\description \let\endDescription\enddescription
+\let\ENUMERATE\enumerate \let\endENUMERATE\endenumerate
+\let\ITEMIZE\itemize \let\endITEMIZE\enditemize
+\let\DESCRIPTION\description \let\endDESCRIPTION\enddescription
+\@namedef{enumerate*}{\enumerate}
+\@namedef{endenumerate*}{\endenumerate}
+\@namedef{itemize*}{\itemize}
+\@namedef{enditemize*}{\enditemize}
+\@namedef{description*}{\description}
+\@namedef{enddescription*}{\enddescription}
+
+%% =================================================================
 %% 16. Bibliography
 %% =================================================================
 
@@ -1310,68 +1424,103 @@
 \def\profile{\@ifstar{\n@eprofile}{\@eprofile}}
 \def\@eprofile{\@ifnextchar[{\ip@eprofile}{\no@eprofile}}
 
+%% A profile entry is built from two independently positioned
+%% zero-width ("pushed to the wall") boxes stacked at the same origin:
+%% the 25mm x 31mm photo/frame box on the left, and a \hangindent'd
+%% text block (name, membership line, then the biography body) that
+%% wraps around it for its first few lines. Both live inside an outer
+%% one-column-wide minipage so the whole entry behaves as a single
+%% paragraph-like unit that \biography can stack vertically.
 \ifDS@techrep\else
 \ifDS@english
 \def\ip@eprofile[#1]#2#3{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
+  \noindent\begin{minipage}[t]{\columnwidth}%
   \IfFileExists{#1.eps}{%
-    \pushtowall{\raisebox{-28.19mm}{\resizebox{25mm}{31mm}{\includegraphics{#1.eps}}}}}{}%
-  \hangindent30mm\hangafter-8\relax
-  {\fontsize{13\Q}{18\h}\bfseries\selectfont#2}\@BreakMember\par
-  {\fontsize{13\Q}{18\h}\selectfont#3}\par}
+    \raisebox{-28mm}{\pushtowall{\resizebox{25mm}{31mm}{\includegraphics{#1.eps}}}}}{%
+  \raisebox{2.2mm}{\pushtowall{\begin{minipage}[t]{25mm}
+    \hrule\@height.1mm
+    \hbox to 25mm{\vrule\@width.1mm\@height31mm\hss\vrule\@width.1mm\@height31mm}%
+    \hrule\@height.1mm
+  \end{minipage}}}}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \hangindent30mm\hangafter-8\relax
+    \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#2}\hskip.5em\@BreakMember
+    {\fontsize{13\Q}{18\h}\selectfont#3}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \def\no@eprofile#1#2{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
-  \pushtowall{\hbox{\vrule\@width.1mm\@height31mm
-    \hskip25mm\vrule\@width.1mm\@height31mm}}%
-  \hangindent30mm\hangafter-8\relax
-  {\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\@BreakMember\par
-  {\fontsize{13\Q}{18\h}\selectfont#2}\par}
+  \noindent\begin{minipage}[t]{\columnwidth}%
+  \raisebox{3mm}{\pushtowall{\begin{minipage}[t]{25mm}
+    \hrule\@height.1mm
+    \hbox to 25mm{\vrule\@width.1mm\@height31mm\hss\vrule\@width.1mm\@height31mm}%
+    \hrule\@height.1mm
+  \end{minipage}}}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \hangindent30mm\hangafter-8\relax
+    \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\hskip.5em\@BreakMember
+    {\fontsize{13\Q}{18\h}\selectfont#2}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \def\n@eprofile#1#2{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
-  {\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\@BreakMember\par
-  {\fontsize{13\Q}{18\h}\selectfont#2}\par}
+  \noindent\begin{minipage}[t]{\columnwidth}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\hskip.5em\@BreakMember
+    {\fontsize{13\Q}{18\h}\selectfont#2}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \else
 \def\ip@eprofile[#1]#2#3#4{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
+  \noindent\begin{minipage}[t]{\columnwidth}%
   \IfFileExists{#1.eps}{%
-    \pushtowall{\raisebox{-28.19mm}{\resizebox{25mm}{31mm}{\includegraphics{#1.eps}}}}}{}%
-  \@for\@temp:=#2\do{%
-    \@ifundefined{\@temp @member}{}{\edef\@@member{（\csname\@temp @member\endcsname）}}%
-    \@ifundefined{\@temp @title@member}{}{\edef\@title@member{\csname\@temp @title@member\endcsname．}}}%
-  \hangindent30mm\hangafter-7\relax
-  {\fontsize{15\JQ}{0\h}\bfseries\selectfont#3}\@BreakMember\\[.5\Cvs]
-  {\fontsize{13\JQ}{21\h}\selectfont#4\csname @title@member\endcsname
-   \normalsize\inhibitglue\@@member}\par}
+    \raisebox{-28mm}{\pushtowall{\resizebox{25mm}{31mm}{\includegraphics{#1.eps}}}}}{%
+  \raisebox{3mm}{\pushtowall{\begin{minipage}[t]{25mm}
+    \hrule\@height.1mm
+    \hbox to 25mm{\vrule\@width.1mm\@height31mm\hss\vrule\@width.1mm\@height31mm}%
+    \hrule\@height.1mm
+  \end{minipage}}}}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \hangindent30mm\hangafter-7\relax
+    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#3}\hskip1.6\zw\@BreakMember
+    \ipsj@setmember{#2}%
+    \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
+    {\fontsize{13\JQ}{21\h}\selectfont#4\@title@member}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \def\no@eprofile#1#2#3{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
-  \pushtowall{\hbox{\vrule\@width.1mm\@height31mm
-    \hskip25mm\vrule\@width.1mm\@height31mm}}%
-  \@for\@temp:=#1\do{%
-    \@ifundefined{\@temp @member}{}{\edef\@@member{（\csname\@temp @member\endcsname）}}%
-    \@ifundefined{\@temp @title@member}{}{\edef\@title@member{\csname\@temp @title@member\endcsname．}}}%
-  \hangindent30mm\hangafter-7\relax
-  {\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\@BreakMember\\[.5\Cvs]
-  {\fontsize{13\JQ}{21\h}\selectfont#3\csname @title@member\endcsname
-   \normalsize\inhibitglue\@@member}\par}
+  \noindent\begin{minipage}[t]{\columnwidth}%
+  \raisebox{3mm}{\pushtowall{\begin{minipage}[t]{25mm}
+    \hrule\@height.1mm
+    \hbox to 25mm{\vrule\@width.1mm\@height31mm\hss\vrule\@width.1mm\@height31mm}%
+    \hrule\@height.1mm
+  \end{minipage}}}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \hangindent30mm\hangafter-7\relax
+    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
+    \ipsj@setmember{#1}%
+    \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
+    {\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \def\n@eprofile#1#2#3{%
-  \par\nobreak\vskip\baselineskip\penalty\@M
-  \noindent
-  \@for\@temp:=#1\do{%
-    \@ifundefined{\@temp @member}{}{\edef\@@member{（\csname\@temp @member\endcsname）}}%
-    \@ifundefined{\@temp @title@member}{}{\edef\@title@member{\csname\@temp @title@member\endcsname．}}}%
-  {\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\@BreakMember\\[.5\Cvs]
-  {\fontsize{13\JQ}{21\h}\selectfont#3\csname @title@member\endcsname
-   \normalsize\inhibitglue\@@member}\par}
+  \noindent\begin{minipage}[t]{\columnwidth}%
+  \pushtowall{\begin{minipage}[t]{\columnwidth}%
+    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
+    \ipsj@setmember{#1}%
+    {\normalsize\@@member}\\[.5\Cvs]
+    {\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
+  \end{minipage}}%
+  \end{minipage}\global\let\@BreakMember\relax\par}
 \fi
 \fi
 \let\inhibitglue\relax
 \def\@@member{}
 \def\@title@member{}
+%% #1 = comma-separated membership codes (see \h@member etc. above).
+\def\ipsj@setmember#1{%
+  \def\@@member{}\def\@title@member{}%
+  \@for\@temp:=#1\do{%
+    \@ifundefined{\@temp @member}{}{\edef\@@member{（\csname\@temp @member\endcsname）}}%
+    \@ifundefined{\@temp @title@member}{}{\edef\@title@member{\csname\@temp @title@member\endcsname．}}}}
 
 %% This default \biography (with profile photo box) is only meaningful
 %% outside techrep mode; Sec. 12 above already installed the no-op
