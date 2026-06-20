@@ -190,6 +190,28 @@
 
 修正後は `jsample-lualatex.tex`／`esample-lualatex.tex` の著者紹介ページが参照PDFと同じレイアウトになることを確認した。
 
+### 4.9 英文モードの `\author` でラベルが完全に失われるバグ（重要）
+
+**症状**：`english`オプション使用時、`\author{Taro Joho}{IPSJ,PJU}[joho.taro@ipsj.or.jp]` のように所属ラベルとメールを指定しても、上付き文字の**所属番号が完全に消える**（メールの文字（`a)`等）はカンマを伴って正しく出るが、その前の数字が出ない）。複数著者がいる場合に発覚しやすい。
+
+**原因**：`\ifDS@english` 分岐の `\author` 定義（ユーザー向けの2引数ラッパー）が
+
+```latex
+\def\author#1#2{\@ifnextchar[{\@author{#1}{#1}}{\@author{#1}{#1}[]}}
+```
+
+となっており、内部マクロ `\@author#1#2[#3]`（`#1`=所属ラベル一覧, `#2`=著者名, `#3`=メール）に対して**著者名（`#1`）を2回渡し、所属ラベル一覧（`#2`）を完全に捨てていた**。結果として所属ラベル一覧が常に「著者名そのもの」という1個のダミーラベルになり、`\affiliate@num@<著者名>` も `\paffiliate@num@<著者名>` も未定義（`\csname`の自動\relax化）になるため、該当する上付き文字が空文字列になる。
+
+**対処**：引数の順序を入れ替えるだけで修正できる。
+
+```latex
+\def\author#1#2{\@ifnextchar[{\@author{#2}{#1}}{\@author{#2}{#1}[]}}
+```
+
+このバグは情報処理学会公式の英文サンプル（`esample.tex`）でも発生していた（3人の連名のうち全員の所属番号が消えていた）が、ページ数比較と1ページ目のざっとした目視確認だけでは見逃していた。SES（ソフトウェアエンジニアリングシンポジウム）用テンプレートの英文サンプルを検証する際に、上付き文字を高解像度で確認して初めて発覚した。**ページ数の一致だけでは不十分で、複数著者のいる英文ドキュメントでは著者欄を高解像度で目視確認する必要がある**という教訓。
+
+なお、このバグの調査中に「最後の著者の上付き番号の後に余分なカンマがあるように見える」という**もう一つの疑いが生じたが、これは誤りだった**（`pdfcrop --bbox`で著者行だけを高解像度で切り出して確認した結果、カンマは存在しなかった）。低解像度のページ全体レンダリングでは小さい上付き文字の判別が信頼できないことが再確認された（4.7節の調査時と同様の教訓）。
+
 ## 5. 当初の `main.tex` 検証では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書 `main-lualatex.tex`（`main.tex` を移植、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -299,6 +321,53 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`uplatex` のような未知のクラスオプションは無害**：`\documentclass[...,uplatex,...]{ipsj-lualatex}` のように、本クラスが宣言していないオプション名が紛れていても、`\ProcessOptions` はそれを無視し最後に "Unused global option(s)" という警告を出すだけで、コンパイルは止まらない（7件中1件で確認）。旧原稿のオプション指定をそのまま使い回しても実害はない。
 - **その他、特に問題なく動作したサードパーティパッケージ**：`amsmath`, `colortbl`, `ascmac`, `subcaption`, `multirow`, `xcolor`, `tcolorbox`, `inconsolata`, `algorithm`/`algorithm2e`/`algpseudocode`, `slashbox`, `enumitem`, `cite`, `url`/`xurl`, `comment`, 自作の下線パッケージ（`udline.sty`、`\iftdir` 等汎用的なLaTeX2eの書き方のみを使用）。これらは`graphicx`系以外は元々ドライバオプションを取らないため変更不要だった。
 
+### 6.5 SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプション
+
+情報処理学会が配布する標準の `ipsj.cls`/`ipsjtech.sty` とは別に、SES（IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム）が独自に配布している、研究報告スタイルをベースに**ヘッダ（学会名表記）・DOI/補助ヘッダ行・footerの著作権表記・ページ番号をすべて非表示にした**亜種一式（`ipsj.cls`（`ses`オプション追加版）, `ses.sty`, `ses-sample.tex`, `ses-esample.tex`）が存在する。これをユーザーから提供を受けて検証し、`ipsj-lualatex.cls` 側にも `ses` オプションとして実装した。
+
+実物の `ipsj.cls`（SES改変版）を `diff` した結果、本質的な変更は次の3点のみだった。
+
+```latex
+\newif\ifDS@ses \DS@sesfalse
+\DeclareOption{ses}{\DS@sestrue}
+...（ファイル末尾）...
+\ifDS@ses\def\next{\input{ses.sty}\endinput}\else\let\next\relax\fi
+\next
+```
+
+`ses.sty` 自身は `ipsjtech.sty`（techrep）の `\@maketitle`/`\authortitle`/`\biography` 等をほぼ丸ごと再定義しているだけで、実質的な差分は `\ps@IPSJTITLEheadings`（ページスタイル）の中だけにある。さらに重要な点として、**実際の `ses-sample.tex`/`ses-esample.tex` は `techrep` オプションを明示せず `\documentclass[submit,ses,noauthor]{ipsj}` のように `ses` 単独で使われている**（`ses.sty` が無条件に `\input` されるため、techrep相当の組版に自動的に切り替わる）。
+
+この実態に合わせて、`ipsj-lualatex.cls` では `ses` を選択すると同時に内部で `techrep` も有効化し、既存のtechrepページスタイルをさらに上書きする形で実装した。
+
+```latex
+\newif\ifDS@ses      \DS@sesfalse
+\DeclareOption{ses}{\DS@sestrue\DS@techreptrue}
+...
+\ifDS@ses
+\def\ipsj@signame@DAM{\relax}
+\def\ps@IPSJTITLEheadings{%
+  \def\@oddhead{\@Ltop\rlap{\small
+    \ifDS@english{\HeadfontE{\signame}}\else{\HeadfontJ{\signame}}\fi}%
+    \hfil\@Rtop}%
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\@Lbot\hfil{\botnomble\relax}\@Rbot}%
+  \let\@evenfoot\@oddfoot
+  \let\@mkboth\@gobbletwo}
+\let\ps@headings\ps@IPSJTITLEheadings
+\fi
+```
+
+`\ipsj@signame@DAM`（`\signame`の実体）を`\relax`にすることで学会名表記自体を空にし、ページ番号は`\thepage`の代わりに`\relax`を置くことで非表示にしている（オリジナルの`ses.sty`と同じ仕掛け）。
+
+検証結果（提供された `ses-sample.pdf`/`ses-esample.pdf` と比較）：
+
+| テスト文書 | 元ファイル | モード | 新/元のページ数 | 結果 |
+|---|---|---|---|---|
+| `ses-sample-lualatex.tex` | `ses-sample.tex`（和文） | `submit,ses,noauthor` | 6 / 6 | 完全一致。ヘッダ・フッタ・ページ番号が全頁で正しく非表示 |
+| `ses-esample-lualatex.tex` | `ses-esample.tex`（英文） | `submit,ses,english` | 8 / 7 | 構造は一致、1ページ分の行送り差（既知のフォントメトリクス差。§6.2参照） |
+
+この検証の過程で、`ses-esample-lualatex.tex` の著者欄（3名連名）の上付き文字が崩れていることに気づき、§4.9に記載した**英文モード `\author` の実バグ**を発見・修正した（`ses`機能自体のバグではなく、既存の`esample-lualatex.tex`にも内在していた）。
+
 ## 7. 未検証・未対応の既知事項
 
 - **縦組（`tate`）**：エンジンレベルの切り替え（`\AtBeginDocument{\tate}`）のみ実装。複雑な2段組タイトルページが縦組で正しく組まれるかは未検証。
@@ -317,5 +386,6 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 | `main-lualatex.tex` / `main-lualatex.pdf` | `main.tex` を `ipsj-lualatex.cls` 用に移植したもの |
 | `jsample.tex`/`esample.tex`/`tech-jsample.tex` と各PDF | 情報処理学会公式サンプル（pLaTeX用）。追加検証で使用 |
 | `jsample-lualatex.tex`/`esample-lualatex.tex`/`tech-jsample-lualatex.tex` と各PDF | 上記サンプルを `ipsj-lualatex.cls` 用に移植したもの |
+| `ses-sample-lualatex.tex`/`ses-esample-lualatex.tex` と各PDF | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（§6.5参照）。元になったpLaTeX版（`ses-sample.tex`/`ses-esample.tex`/`ses.sty`等）はユーザー提供の一時的な検証資料であり、検証後にこのリポジトリから削除済み |
 | `README.md` | 利用者向けの使い方・相違点ドキュメント |
 | `CLAUDE.md` | 本ドキュメント |

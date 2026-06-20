@@ -49,6 +49,13 @@
 \DeclareOption{techrep}{\DS@techreptrue}
 \newif\ifDS@preface  \DS@prefacefalse
 \DeclareOption{preface}{\DS@prefacetrue}
+%% SES (IPSJ/SIGSE Software Engineering Symposium) is a techrep variant
+%% with the running head, DOI line, copyright notice and page number all
+%% suppressed; selecting it implies techrep, matching the original
+%% ses.sty/ipsj.cls combination (real-world usage never adds "techrep"
+%% explicitly alongside "ses").
+\newif\ifDS@ses      \DS@sesfalse
+\DeclareOption{ses}{\DS@sestrue\DS@techreptrue}
 \newif\ifDS@preprint \DS@preprintfalse
 \DeclareOption{preprint}{\DS@preprinttrue\DS@englishtrue}
 
@@ -526,7 +533,7 @@
 \newcount\paffiliate@count
 
 \ifDS@english
-  \def\author#1#2{\@ifnextchar[{\@author{#1}{#1}}{\@author{#1}{#1}[]}}
+  \def\author#1#2{\@ifnextchar[{\@author{#2}{#1}}{\@author{#2}{#1}[]}}
 \else
   \def\author#1#2#3{\@ifnextchar[{\@author{#1}{#2}{#3}}{\@author{#1}{#2}{#3}[]}}
 \fi
@@ -1056,6 +1063,23 @@
 %% ipsjtech.sty applies \ps@IPSJTITLEheadings to every page (not just
 %% the title page), so the interior running head matches it exactly.
 \ifDS@techrep
+\let\ps@headings\ps@IPSJTITLEheadings
+\fi
+
+%% ses.sty blanks the society-name running head, drops the DOI/secondary
+%% header line and the copyright footer text, and replaces the page
+%% number with nothing at all (symposium proceedings paginate the
+%% volume themselves).
+\ifDS@ses
+\def\ipsj@signame@DAM{\relax}
+\def\ps@IPSJTITLEheadings{%
+  \def\@oddhead{\@Ltop\rlap{\small
+    \ifDS@english{\HeadfontE{\signame}}\else{\HeadfontJ{\signame}}\fi}%
+    \hfil\@Rtop}%
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\@Lbot\hfil{\botnomble\relax}\@Rbot}%
+  \let\@evenfoot\@oddfoot
+  \let\@mkboth\@gobbletwo}
 \let\ps@headings\ps@IPSJTITLEheadings
 \fi
 

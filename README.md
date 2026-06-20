@@ -103,6 +103,8 @@ lualatex main.tex
 
 それ以外のオプション（`techrep`, `submit`, `noauthor`, `english`, `preface`, `preprint`, `draft`, `final`, `tate`, `oneside`/`twoside`, `onecolumn`/`twocolumn`, `leqno`, `fleqn`, `openbib`, 各論文誌略称 `PRO`/`ACS`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`JIP`/`TCE`、各論文種別 `technote`/`sigrecommended`/`invited`/`Data`/`Survey`/`Research`/`Short`/`systems`/`services`/`devices`/`Express`/`Practice`/`Content`/`system`/`abstract`/`invitedshort`/`recommendedshort`/`recommendedresearch`/`recommendedpractice`/`recommendedcontent`/`recommendeddevices`）は**そのまま同じ名前で使えます**。
 
+`ses`（IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム向け。研究報告スタイルがベースで、ヘッダの学会名表記・DOI行・footerの著作権表記・ページ番号をすべて非表示にする）にも対応しています。`ses` を指定すると自動的に `techrep` 相当の組版になるため、`\documentclass[submit,ses,noauthor]{ipsj-lualatex}` のように `techrep` を併記する必要はありません（オリジナルの `ses.sty` と同じ挙動です）。
+
 ### 6. コマンド・環境はほぼ全て互換
 
 以下は旧クラスと同じ名前・同じ引数で使えます。原稿の本文（`\begin{document}` 以降）はほとんど書き換え不要です。
@@ -166,8 +168,10 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 | `jsample-lualatex.tex` | 通常の論文誌投稿（和文、複数著者・現所属・著者紹介あり）の公式サンプルを移植したもの |
 | `esample-lualatex.tex` | 英文論文誌（`JIP`, `preprint`, `english`）の公式サンプルを移植したもの |
 | `tech-jsample-lualatex.tex` | 研究報告の公式サンプルを移植したもの |
+| `ses-sample-lualatex.tex` | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（和文） |
+| `ses-esample-lualatex.tex` | 同上（英文） |
 
-対応する元の `*.tex`（pLaTeX用）と、両方のPDFも参考用に同梱しています。`ipsj.cls` → `ipsj-lualatex.cls` への移行作業の実例として差分を確認してください。
+`jsample`/`esample`/`tech-jsample` については対応する元の `*.tex`（pLaTeX用）と両方のPDFも参考用に同梱しています。`ipsj.cls` → `ipsj-lualatex.cls` への移行作業の実例として差分を確認してください（`ses-sample`/`ses-esample` の元ファイルは検証用に提供を受けた一時資料のため同梱していません）。
 
 ## 既知の制限
 
