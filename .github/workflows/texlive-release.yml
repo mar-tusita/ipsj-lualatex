@@ -1,0 +1,48 @@
+# This GitHub Actions workflow compiles a LaTeX document into a PDF and uploads it as an asset to a new GitHub Release. The release is created with a tag name based on the current date and time.
+name: TeX Live and upload PDF to Releases
+
+# MAIN_FILE: TeX source filename (without .tex)
+# CONTAINER: TeX Live container image
+env:
+  MAIN_FILE: main
+  CONTAINER: texlive/texlive:latest
+# For English documents, use texlive/texlive:latest-small to improve speed.
+# For Japanese documents, use paperist/texlive-ja or another lightweight container to improve speed.
+
+# The write permission is required to create a release and upload assets.
+permissions:
+  contents: write
+
+# This workflow is triggered when manually triggered via the GitHub Actions interface.
+on:
+  workflow_dispatch:
+
+jobs:
+  latex-release:
+    runs-on: ubuntu-latest
+    env:
+      # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      # https://github.com/actions/checkout
+      - name: Checkout git repo
+        uses: actions/checkout@v6
+
+      - name: Compile LaTeX document
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workdir -w /workdir ${{ env.CONTAINER }} latexmk ${{ env.MAIN_FILE }}.tex
+
+      - name: Set current datetime as variable
+        env:
+          TZ: 'Asia/Tokyo' # Set your desired timezone here
+        id: set_datetime
+        run: echo "datetime=$(date +'%Y%m%d.%H%M%S')" >> $GITHUB_OUTPUT
+
+      # https://github.com/softprops/action-gh-release
+      - name: Create a release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ steps.set_datetime.outputs.datetime }}
+          files: ${{ env.MAIN_FILE }}.pdf
+          tag_name: ${{ steps.set_datetime.outputs.datetime }}
