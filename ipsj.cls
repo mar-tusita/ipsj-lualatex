@@ -5911,15 +5911,7 @@ $\langle$\nobreak{#2}\nobreak$\rangle$}
 \def\：{\nobreak\protect\makebox[1\zw][l]{：}\ignorespaces}
 \fi
 
-
-%\ifDS@draft\def\next{\input{ipsjdraft.sty}\endinput}\else\let\next\relax\fi
-%\next
-
 \ifDS@preface\def\next{\input{ipsjpref.sty}\endinput}\else\let\next\relax\fi
-\next
-
-
-\ifDS@OT\def\next{\input{ipsjot.sty}\endinput}\else\let\next\relax\fi
 \next
 
 %% v1.02c
