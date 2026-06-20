@@ -50,7 +50,7 @@ lualatex main.tex
 lualatex main.tex   # 相互参照・文献番号を確定させるため2回以上
 ```
 
-`latexmk` を使う場合は `$pdf_mode = 1;`（LuaLaTeXの直接PDF生成）の設定にしてください。リポジトリ同梱の `latexmkrc` は旧来の `platex + dvipdfmx` 用なので、LuaLaTeXで使う際は変更が必要です。
+`latexmk` を使う場合は latexmkrc にて `$pdf_mode = 4;`（LuaLaTeXの直接PDF生成）の設定にしてください。
 
 BibTeXで文献リストを作る場合（`ipsjsort.bst`/`ipsjunsrt.bst`を使用）は、和文を含む`.bib`を正しく処理できる `upbibtex` を使ってください。プレーンな `bibtex` ではマルチバイト文字の扱いが原因でエラーになることがあります。
 
