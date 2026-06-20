@@ -531,6 +531,12 @@
 \newcount\affiliate@count
 \newcount\offsetemail
 \newcount\paffiliate@count
+%% Dedicated scratch registers for \authoroutput: \@tempcnta/\@tempcntb are
+%% reused by NFSS font-substitution machinery, which can fire mid-loop the
+%% first time a given superscript font/size is loaded and silently clobber
+%% them (same reentrancy hazard as \@tempboxa/\@tempboxb; see CLAUDE.md 4.4).
+\newcount\ipsj@authcnta
+\newcount\ipsj@authcntb
 
 \ifDS@english
   \def\author#1#2{\@ifnextchar[{\@author{#2}{#1}}{\@author{#2}{#1}[]}}
@@ -594,13 +600,13 @@
   \@ifundefined{breakauthor@\the\count@}{\hskip1\zw}{\csname breakauthor@\the\count@\endcsname}}
 \def\ebreak@or@oneskip{%
   \@ifundefined{breakeauthor@\the\count@}{\hskip1em}{\csname breakeauthor@\the\count@\endcsname}}
-%% Both loops bound \@tempcntb by \@tempcnta = (item count + 1), so a
+%% Both loops bound \ipsj@authcntb by \ipsj@authcnta = (item count + 1), so a
 %% trailing separator is needed exactly when the NEXT index is still
-%% inside that range, i.e. \@tempcntb+1 < \@tempcnta.
+%% inside that range, i.e. \ipsj@authcntb+1 < \ipsj@authcnta.
 \def\comma@or@relax@affilabel{%
-  \ifnum\numexpr\@tempcntb+1\relax<\@tempcnta ,\fi}
+  \ifnum\numexpr\ipsj@authcntb+1\relax<\ipsj@authcnta ,\fi}
 \def\comma@or@relax@email{%
-  \ifnum\numexpr\@tempcntb+1\relax<\@tempcnta ,\fi}
+  \ifnum\numexpr\ipsj@authcntb+1\relax<\ipsj@authcnta ,\fi}
 
 \def\authoroutput#1{%
   \bgroup
@@ -615,11 +621,11 @@
         \csname #1authorname\the\count@\endcsname
       \fi
       \null{}%
-      \expandafter\@tempcnta\csname authorlabel@num@\the\count@\endcsname
-      \advance\@tempcnta\@ne
-      \@tempcntb\@ne
-      {\@whilenum{\@tempcntb<\@tempcnta}\do{%
-        \edef\temp{\csname authorlabel\the\count@ @\the\@tempcntb\endcsname}%
+      \expandafter\ipsj@authcnta\csname authorlabel@num@\the\count@\endcsname\relax
+      \advance\ipsj@authcnta\@ne
+      \ipsj@authcntb\@ne
+      {\@whilenum{\ipsj@authcntb<\ipsj@authcnta}\do{%
+        \edef\temp{\csname authorlabel\the\count@ @\the\ipsj@authcntb\endcsname}%
         \textsuperscript{\csname #1labelfont\endcsname
           \expandafter\ifx\csname affiliate@num@\temp\endcsname\relax
             \csname paffiliate@num@\temp\endcsname
@@ -627,19 +633,19 @@
             \csname affiliate@num@\temp\endcsname
           \fi
           \comma@or@relax@affilabel}%
-        \advance\@tempcntb\@ne}}%
-      \expandafter\@tempcnta\csname authoremail@num@\the\count@\endcsname
-      \ifnum\@tempcnta=\z@\relax\else\textsuperscript{,}\fi
-      \advance\@tempcnta\@ne
-      \@tempcntb\@ne
-      \@whilenum{\@tempcntb<\@tempcnta}\do{%
+        \advance\ipsj@authcntb\@ne}}%
+      \expandafter\ipsj@authcnta\csname authoremail@num@\the\count@\endcsname\relax
+      \ifnum\ipsj@authcnta=\z@\relax\else\textsuperscript{,}\fi
+      \advance\ipsj@authcnta\@ne
+      \ipsj@authcntb\@ne
+      \@whilenum{\ipsj@authcntb<\ipsj@authcnta}\do{%
         \bgroup
-        \advance\@tempcntb\offsetemail
-        \textsuperscript{\csname #1labelfont\endcsname\@alph{\@tempcntb})\comma@or@relax@email}%
+        \advance\ipsj@authcntb\offsetemail
+        \textsuperscript{\csname #1labelfont\endcsname\@alph{\ipsj@authcntb})\comma@or@relax@email}%
         \egroup
-        \advance\@tempcntb\@ne}%
-      \advance\@tempcntb-1\relax
-      \global\advance\offsetemail\@tempcntb
+        \advance\ipsj@authcntb\@ne}%
+      \advance\ipsj@authcntb-1\relax
+      \global\advance\offsetemail\ipsj@authcntb
     }%
     \ifDS@english\ebreak@or@oneskip\else\csname #1break@or@oneskip\endcsname\fi
     \advance\count@\@ne}%
@@ -809,7 +815,7 @@
   \count@\@ne
   \advance\author@count\@ne
   \@whilenum{\count@<\author@count}\do{%
-    \expandafter\@tempcntb\csname authoremail@num@\the\count@\endcsname
+    \expandafter\@tempcntb\csname authoremail@num@\the\count@\endcsname\relax
     \advance\@tempcntb\@ne
     \@tempcnta\@ne
     \@whilenum{\@tempcnta<\@tempcntb}\do{%
