@@ -1,8 +1,10 @@
 # ipsj-lualatex.cls
 
-情報処理学会（IPSJ）の論文・研究報告用スタイルファイル `ipsj.cls` / `ipsjpref.sty` / `ipsjtech.sty`（pLaTeX/upLaTeX前提）の機能を、**LuaLaTeX専用**に1ファイルへ再実装したクラスファイルです。
+情報処理学会（IPSJ）の論文・研究報告用スタイルファイル `ipsj.cls` / `ipsjpref.sty` / `ipsjtech.sty`（pLaTeX/upLaTeX前提）の機能を、**LuaLaTeX専用**に1ファイルへ再実装したクラスファイルです。IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム（SES）が別途配布している `ses.sty`（研究報告スタイルからヘッダ・フッタ・ページ番号を非表示にした亜種）の機能も `ses` オプションとして統合しています（詳細は後述）。
 
 後方互換性（pLaTeX, upLaTeX, pdfLaTeX, XeLaTeXでの利用）は考慮していません。現在のLuaLaTeXのみを対象としています。
+
+**変換元スタイルファイルのバージョン**：`ipsj.cls` v4.1 [2025/02/05]、`ipsjpref.sty` v3.00 [2017/02/16]、`ipsjtech.sty` v3.00 [2012/06/01]（いずれも情報処理学会公式配布分）。`ses.sty` はSES2025（2025年開催のソフトウェアエンジニアリングシンポジウム）への投稿用として配布されていたものを基にしています。これらのスタイルファイルは年度や版によって変更される可能性があるため、最新版との差異が疑われる場合は配布元（情報処理学会 投稿要領 <http://www.ipsj.or.jp/journal/submit/style.html>、SES運営委員会）の現行版を確認してください。
 
 ## 必要環境
 

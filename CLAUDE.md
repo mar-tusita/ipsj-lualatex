@@ -238,6 +238,31 @@
 
 **発見の経緯**：当初（4.9節）の調査では英文3名連名サンプルで確認し、メールアドレスのない最後の著者（Jiro Gakkai）の上付き文字を高解像度で切り出して「カンマは無い」と判断した。これ自体は**その時点の確認としては正しかった**が、後にSES追加検証の5件目（全著者がメールアドレスを省略した和文4名連名の論文）で同じ位置に明確なカンマが再現し、`\message`による値の直接出力で`\authoremail@num@<n>`が確かに`0`であることを確認した上で、`\relax`や`\message`を該当行の直後に挿入すると症状が消えるという再現実験により、TeXの数値スキャン中の条件文先読み実行が原因であると断定した。同じ条件（英文3名連名、メールなし著者）を結果が変わるはずがない以上、4.9節時点の「カンマは無い」という判断は**誤り**だったことになる。低解像度はおろか高解像度での目視確認すら、TeXのマクロ展開タイミングに起因する間欠的な不具合の有無を判定する手段としては不十分であり、**疑わしい挙動は`\message`で実際の変数値を直接出力して検証する**のが唯一信頼できる方法である。
 
+### 4.11 `itemize`/`enumerate`内に不自然な行間が空く（`\flushbottom`×フォント再選択の相互作用、重要）
+
+**症状**：`jsample-lualatex.pdf`を元の`jsample.pdf`と見比べると、`itemize`/`enumerate`を使っている節（5.1節の「べからず集」チェックリスト等）だけ、項目間に不自然に大きい空白が不規則に入る。本文の段落や他の箇所は正常。
+
+**原因**：本クラスは`\flushbottom`を使用しており（原文`ipsj.cls`も同様）、両カラムの高さを揃えるために必要な伸縮分を、ページ内で伸縮可能な空白（glue）に分配する。標準`article.cls`の`itemize`/`enumerate`のリスト間隔（`\@listI`系、`\topsep`/`\itemsep`/`\parsep`）には`plus`/`minus`の伸縮成分が大きく含まれており、他に伸縮できる箇所が少ないと、その伸縮分がリストの項目間に集中して押し込まれ、不自然な空白として可視化される。
+
+原文`ipsj.cls`はこの現象を避けるため、`itemize`/`enumerate`のリスト間隔を全て**伸縮なしのゼロ**に固定している（5945行のファイル中、「ipsjpapers.styから流用」というコメント付きの一箇所で`\@listi`〜`\@listvi`を再定義）。本クラスでも同様の再定義を一度だけ追加して動作確認したが、**それだけでは直らなかった**：`fontspec`/`luatexja-fontspec`が`\AtBeginDocument`フック内で`\normalsize`を再度呼び出すため（pLaTeXには存在しない、LuaLaTeX特有のフォント設定の都合）、`\normalsize`の定義に含まれる`\let\@listi\@listI`（標準カーネルの慣用句で、`\@listI`は`article.cls`の伸縮ありデフォルトを保持している）が**グループの外側（トップレベル）で再実行され**、一度きりの修正を上書きしてしまう。原文`ipsj.cls`はpLaTeXのみを対象とし`fontspec`を一切使わないため、この再実行が起こらず、問題が表面化しなかった。
+
+`\message`でクラス読み込みの各段階での`\meaning\@listi`を直接確認したところ、`\usepackage{...}`直後までは正しくゼロ伸縮だったが、`\begin{document}`の直後の時点でいつの間にか伸縮ありに戻っていることが判明し、原因を特定した。
+
+**対処**：`\normalsize`自身の定義内で`\let\@listi\@listI`を使うのをやめ、`\small`/`\footnotesize`が既にそうしているのと同じパターンで、ゼロ伸縮の値を直接`\def`する。
+
+```latex
+\renewcommand{\normalsize}{%
+  ...
+  %% \let\@listi\@listI ではなく直接値を設定する（後述参照）
+  \leftmargin\leftmargini \partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
+```
+
+`\normalsize`は何度再実行されても毎回正しい値を設定するため、再実行元（`fontspec`のフックなど）を個別に特定・対処する必要がなく、頑健な解決になる。深い入れ子（`\@listii`〜`\@listvi`）は`\normalsize`からは再設定されないため、クラス読み込み時の一度きりの定義で十分。
+
+修正後、`jsample-lualatex.pdf`は9ページ（修正前は11ページ、原文は10ページ）、`esample-lualatex.pdf`は8ページ（修正前は9ページ、原文も8ページで完全一致）に変化し、不自然な空白は全て解消された。
+
+**教訓**：`\AtBeginDocument`でフックを使うパッケージ（`fontspec`系に限らず、`hyperref`等も同様の手法を使うことがある）は、クラス側が想定していないタイミングで`\normalsize`等のカーネルコマンドを**トップレベルで**再実行することがある。クラス内で「一度だけ`\@listi`等を上書きすれば十分」という設計は、こうした再実行で容易に無効化されるため、**繰り返し呼ばれる可能性のある命令（`\normalsize`/`\small`/`\footnotesize`等）の内部に直接組み込む**方が安全である。
+
 ## 5. 当初の `main.tex` 検証では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書 `main-lualatex.tex`（`main.tex` を移植、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -291,10 +316,10 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 |---|---|---|---|---|
 | `main-lualatex.tex` | `main.tex`（実論文） | `submit,techrep,noauthor` | 8 / 8 | ほぼ画素単位で一致 |
 | `tech-jsample-lualatex.tex` | `tech-jsample.tex`（公式サンプル） | `submit,techrep,noauthor` | 6 / 6 | ほぼ画素単位で一致 |
-| `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 11 / 10 | 構造は一致、1ページ分の行送り差 |
-| `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 9 / 8 | 同上 |
+| `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 9 / 10 | 構造は一致、1ページ分の行送り差 |
+| `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 8 / 8 | 完全一致 |
 
-`jsample`/`esample` の1ページ差は、フォントメトリクスの違い（原文はTimes/Helvetica系+和文ベクタフォント、新版はTeX Gyre Termes/Heros + Harano Aji）による行末・改ページ位置の累積的なズレであり、構造上の不具合ではない（見出し・図表・著者紹介・参考文献など全要素は正しく再現されている）。
+`jsample` の1ページ差は、フォントメトリクスの違い（原文はTimes/Helvetica系+和文ベクタフォント、新版はTeX Gyre Termes/Heros + Harano Aji）による行末・改ページ位置の累積的なズレであり、構造上の不具合ではない（見出し・図表・著者紹介・参考文献など全要素は正しく再現されている）。なおこの数値は§4.11の`itemize`/`enumerate`行間バグ修正後のもの（修正前は`jsample`が11ページ、`esample`が9ページで、いずれも実際より1ページ多かった）。
 
 `techrep` モードの2文書がページ数完全一致なのは、研究報告の本文がdense vol/no/DOI表記を持たず、見出しの行間調整等の影響を受けにくいためと考えられる。
 
@@ -346,6 +371,8 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **BibTeXは `upbibtex -kanji=utf8` を使う**：プレーンな `bibtex` コマンドでは、和文を含む `.bib` ファイル＋ `ipsjsort.bst`/`ipsjunsrt.bst` の組み合わせで `"XXX" is a string literal, not an integer, for entry truncation` のような大量のエラーが出ることがある（バイト単位処理のためUTF-8マルチバイト文字の境界を誤認識する）。`upbibtex -kanji=utf8 <jobname>` を使えば問題なく `.bbl` が生成できる。リポジトリの `latexmkrc`（`$bibtex = 'pbibtex %O %B';`）をLuaLaTeX用に書き換える場合は `$bibtex = 'upbibtex -kanji=utf8 %O %B';` 等にするとよい。
 - **`uplatex` のような未知のクラスオプションは無害**：`\documentclass[...,uplatex,...]{ipsj-lualatex}` のように、本クラスが宣言していないオプション名が紛れていても、`\ProcessOptions` はそれを無視し最後に "Unused global option(s)" という警告を出すだけで、コンパイルは止まらない（7件中1件で確認）。旧原稿のオプション指定をそのまま使い回しても実害はない。
 - **その他、特に問題なく動作したサードパーティパッケージ**：`amsmath`, `colortbl`, `ascmac`, `subcaption`, `multirow`, `xcolor`, `tcolorbox`, `inconsolata`, `algorithm`/`algorithm2e`/`algpseudocode`, `slashbox`, `enumitem`, `cite`, `url`/`xurl`, `comment`, 自作の下線パッケージ（`udline.sty`、`\iftdir` 等汎用的なLaTeX2eの書き方のみを使用）。これらは`graphicx`系以外は元々ドライバオプションを取らないため変更不要だった。
+
+**注記**：この7件検証の時点では§4.11の`itemize`/`enumerate`行間バグはまだ発見されていなかった。元のzip/展開先は検証後に削除済みのため、修正後のページ数で再検証はできていないが、`itemize`/`enumerate`を使っている文書（7件中複数）では、行間が詰まった分だけページ数がさらに減っている可能性がある（§4.11参照）。
 
 ### 6.5 SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプション
 
@@ -411,6 +438,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`\lstset{...}`内の`zw`は変換が必要な場合がある**：§6.4で「`\lstset`のキーバリュー内の`zw`（`xleftmargin=3zw`等）は`listings`側のパーサが処理するため変換不要」と記録したが、これは**誤り、または機種依存**だったことが判明した（4件目で`xleftmargin=0zw`/`xrightmargin=0zw`/`numbersep=1zw`が`! Illegal unit of measure (pt inserted).`で実際にエラーになった）。`xleftmargin`/`xrightmargin`/`numbersep`は`listings`内部でTeXの標準的な寸法スキャナに渡される本物の寸法キーであり、`zw`を特別扱いするわけではない。**`\lstset`内であっても`zw`/`zh`は機械的に`\zw`/`\zh`へ変換する**のが安全（§6.3の手順に統合済み）。
 - **クラス側の本物のバグを発見・修正**（§4.10参照）：メールアドレスを持たない著者の上付き文字に余分なカンマが付くバグ。`\expandafter<count>\csname...\endcsname`形式の代入に`\relax`終端が無く、TeXの数値スキャン中に直後の`\ifnum`条件文が代入完了前の古い値で実行されてしまうことが原因。5件目（全著者がメールアドレス省略）で初めて可視化されたが、実際には全文書に潜在していた（メールアドレスのある著者では「出るべきカンマ」と重なって無症状だった）。
 - それ以外（`pxjahyper`削除、`jlisting.sty`の文字コード変換、`upbibtex -kanji=utf8`の使用）は§6.4と同じ対応で問題なく解決した。
+- **この5件検証のさらに後で§4.11の`itemize`/`enumerate`行間バグを発見**（`fontspec`が`\AtBeginDocument`で`\normalsize`を再実行し、一度きりのリスト間隔修正を無効化する問題）。この表のページ数はバグ修正**前**のものであり、元のzip/展開先は検証後に削除済みのため再検証はできていない。`itemize`を使っている文書（1〜4件目、特に「べからず集」的なチェックリストを含むもの）では、修正後さらにページ数が減っている可能性がある。
 
 ## 7. 未検証・未対応の既知事項
 

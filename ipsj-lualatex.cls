@@ -194,7 +194,13 @@
   \abovedisplayshortskip \z@ \@plus 2.5\p@
   \belowdisplayshortskip 5\p@ \@plus 2\p@ \@minus 2\p@
   \belowdisplayskip \abovedisplayskip
-  \let\@listi\@listI}
+  %% Deliberately not \let\@listi\@listI (article.cls's stretchy
+  %% default): fontspec/luatexja-fontspec re-invoke \normalsize from an
+  %% \AtBeginDocument hook that runs at the top level (no group), so
+  %% any reset to a stretchy \@listi here would permanently undo the
+  %% rigid list spacing set up below (see CLAUDE.md for the full
+  %% writeup of the resulting \flushbottom column-balancing bug).
+  \leftmargin\leftmargini \partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
 
 \renewcommand{\small}{%
   \ifDS@english
@@ -274,6 +280,26 @@
 \setlength\leftmargini{2\Cwd}
 \setlength\marginparsep{5mm}
 \setlength\marginparpush{5\p@}
+
+%% itemize/enumerate/description spacing: make it perfectly rigid (no
+%% plus/minus stretch) at every nesting depth, matching the original
+%% class. Without this, \flushbottom's column-height balancing dumps
+%% all of its needed stretch into whichever list happens to share a
+%% column with a taller one, producing huge unnatural gaps between
+%% list items that the original never had (standard article.cls's
+%% \@listI etc. all carry generous plus/minus stretch). Depth 1
+%% (\@listi) is also pinned directly inside \normalsize above, since
+%% that is the one that gets re-invoked (and would otherwise be
+%% clobbered) via fontspec's \AtBeginDocument hook; \@listii-vi are
+%% never re-invoked elsewhere, so a one-time fix here is enough.
+\def\ipsj@listspacing{\partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
+\def\@listi{\leftmargin\leftmargini \ipsj@listspacing}
+\def\@listii{\leftmargin\leftmarginii \ipsj@listspacing}
+\def\@listiii{\leftmargin\leftmarginiii \ipsj@listspacing}
+\def\@listiv{\leftmargin\leftmarginiv \ipsj@listspacing}
+\def\@listv{\leftmargin\leftmarginv \ipsj@listspacing}
+\def\@listvi{\leftmargin\leftmarginvi \ipsj@listspacing}
+\@listi
 
 %% =================================================================
 %% 5. Page geometry
