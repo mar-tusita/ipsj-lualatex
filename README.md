@@ -83,7 +83,7 @@ lualatex main.tex
 | `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
 | `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1数式フォント差し替え | 削除してください（LuaLaTeXのデフォルト数式フォントで十分。互換性もありません） |
 
-実際に7件の研究論文・研究報告（情報処理学会論文誌・研究会原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。詳細は[CLAUDE.md](CLAUDE.md)の6.4節を参照してください。
+実際に8件の研究論文・研究報告（情報処理学会論文誌・研究会原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。詳細は[CLAUDE.md](CLAUDE.md)の6.4節を参照してください。
 
 ### 4. 用紙サイズオプションの廃止（重要）
 
@@ -163,7 +163,6 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 
 | ファイル | 内容 |
 |---|---|
-| `main-lualatex.tex` | 研究報告（`techrep,submit,noauthor`）の実例 |
 | `jsample-lualatex.tex` | 通常の論文誌投稿（和文、複数著者・現所属・著者紹介あり）の公式サンプルを移植したもの |
 | `esample-lualatex.tex` | 英文論文誌（`JIP`, `preprint`, `english`）の公式サンプルを移植したもの |
 | `tech-jsample-lualatex.tex` | 研究報告の公式サンプルを移植したもの |
