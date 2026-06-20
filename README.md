@@ -52,6 +52,14 @@ lualatex main.tex   # 相互参照・文献番号を確定させるため2回以
 
 `latexmk` を使う場合は `$pdf_mode = 1;`（LuaLaTeXの直接PDF生成）の設定にしてください。リポジトリ同梱の `latexmkrc` は旧来の `platex + dvipdfmx` 用なので、LuaLaTeXで使う際は変更が必要です。
 
+BibTeXで文献リストを作る場合（`ipsjsort.bst`/`ipsjunsrt.bst`を使用）は、和文を含む`.bib`を正しく処理できる `upbibtex` を使ってください。プレーンな `bibtex` ではマルチバイト文字の扱いが原因でエラーになることがあります。
+
+```sh
+upbibtex -kanji=utf8 main
+lualatex main.tex
+lualatex main.tex
+```
+
 ## ipsj.cls利用者向け：主な相違点
 
 これまで `ipsj.cls` / `ipsjpref.sty` / `ipsjtech.sty` を使っていた方向けに、変更点をまとめます。
@@ -71,7 +79,11 @@ lualatex main.tex   # 相互参照・文献番号を確定させるため2回以
 | `\documentclass[submit,techrep]{ipsj}` | `\documentclass[submit,techrep]{ipsj-lualatex}` |
 | `\usepackage[dvipdfmx]{graphicx}` | `\usepackage{graphicx}`（ドライバオプション不要） |
 | `\usepackage[dvips]{graphicx}` | 同上 |
+| `\usepackage[dvipdfmx,...]{hyperref}` / `\usepackage[dvipdfmx]{xcolor}` 等 | ドライバオプションを外す（`graphicx`以外でも同様） |
+| `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
 | `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1数式フォント差し替え | 削除してください（LuaLaTeXのデフォルト数式フォントで十分。互換性もありません） |
+
+実際に7件の研究論文・研究報告（情報処理学会論文誌・研究会原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。詳細は[CLAUDE.md](CLAUDE.md)の6.4節を参照してください。
 
 ### 4. 用紙サイズオプションの廃止（重要）
 

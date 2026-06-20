@@ -255,9 +255,49 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 1. `\documentclass[...]{ipsj}` → `\documentclass[...]{ipsj-lualatex}`
 2. `\usepackage[dvipdfmx]{graphicx}` / `\usepackage[dvips]{graphicx}` → `\usepackage{graphicx}`
 3. `\usepackage[varg]{txfonts}` と続く `\makeatletter \input{ot1txtt.fd} \makeatother` を削除する
-4. ソース中の「`<数値>zw`」「`<数値>zh`」を全て「`<数値>\zw`」「`<数値>\zh`」に変換する（`grep -n '[0-9.]zw[]}]'` 等で検出できる）
-5. `lualatex` で2回コンパイルし、`Undefined control sequence` 等が出ないか確認する
-6. 元のPDF（pLaTeXでビルド済みのもの）とページ数・レイアウトを目視比較する
+4. `\usepackage[dvipdfmx,...]{hyperref}` や `\usepackage[dvipdfmx]{xcolor}` など、`graphicx` 以外のパッケージに付いている `dvipdfmx`/`dvips` ドライバオプションも同様に削除する（§6.4参照）
+5. `\usepackage{pxjahyper}` を使っている場合は削除する（§6.4参照）
+6. ソース中の「`<数値>zw`」「`<数値>zh`」を全て「`<数値>\zw`」「`<数値>\zh`」に変換する（`grep -n '[0-9.]zw[]}]'` 等で検出できる。ただし `\lstset{...}` のキーバリュー引数内の `zw`（`xleftmargin=3zw` 等）は `listings` 側のパーサが処理するため変換不要だった）
+7. プロジェクトに `jlisting.sty` のローカルコピーが同梱されている場合、文字エンコーディングを確認する（§6.4参照）
+8. `lualatex` で2回コンパイルし、`Undefined control sequence` 等が出ないか確認する
+9. BibTeXを使っている場合は `upbibtex -kanji=utf8 <jobname>` で文献リストを生成する（§6.4参照）
+10. 元のPDF（pLaTeXでビルド済みのもの）とページ数・レイアウトを目視比較する
+
+### 6.4 実在する研究論文7件での追加検証
+
+ユーザーが実際に執筆した研究論文・研究報告7件（情報処理学会論文誌4件、研究会原稿3件。図表・BibTeX文献リスト・著者紹介・サードパーティパッケージを含む実戦的な原稿）を用いて、上記の移植手順がそのまま通用するかを検証した。検証後にzipファイルと展開先ディレクトリ（`verify-test/`）は削除済みのため、このセクションが唯一の記録である。
+
+| # | 内容 | 使用パッケージ等 | 新/元のページ数 | 結果 |
+|---|---|---|---|---|
+| 1 | 論文誌（和文，4名連名，BibTeX） | 標準のみ | 13 / 13 | 完全一致 |
+| 2 | 論文誌（和文，3名連名，BibTeX） | amsmath, colortbl, ascmac, subcaption | 9 / 9 | 完全一致 |
+| 3 | 論文誌（technote，BibTeX） | hyperref+pxjahyper, subcaption, comment | 5 / 5 | 完全一致（pxjahyper削除後） |
+| 4 | 論文誌（和文，自作 `sty/udline.sty` 同梱，BibTeX） | multirow, subcaption, udline（独自パッケージ） | 9 / 9 | 完全一致 |
+| 5 | 研究報告（`jlisting.sty` 同梱，BibTeX） | listings+jlisting, cite, url | 9 / 8 | 構造一致，1ページ差（jlisting文字コード変換後） |
+| 6 | 研究報告（BibTeX，謝辞あり） | hyperref+pxjahyper, inconsolata, algorithm2e, tcolorbox | 8 / 8 | 完全一致（pxjahyper削除後） |
+| 7 | 研究報告（`jlisting.sty` 同梱，旧オプション `uplatex` 付き，BibTeX） | listings+jlisting, slashbox, algorithm, algpseudocode | 9 / 8 | 構造一致，1ページ差（jlisting文字コード変換後） |
+
+この検証で新たに判明した、§6.3の手順に追加すべき注意点：
+
+- **`pxjahyper` は削除する**：`hyperref` と組み合わせて和文PDFのしおり文字化けを防ぐためのpLaTeX/upLaTeX専用パッケージ。LuaTeXはネイティブにUnicodeを扱うためこの種の対策が不要であり、`pxjahyper` 自体もLuaTeXをサポートしていない。`\usepackage[dvipdfmx,hidelinks]{hyperref}\usepackage{pxjahyper}` は `\usepackage[hidelinks]{hyperref}` だけにする（7件中2件で遭遇）。
+- **`jlisting.sty` の文字エンコーディングに注意**（7件中2件で遭遇、最重要の新規発見）：`listings` パッケージに和文対応を加える `jlisting.sty` のローカルコピーが、**ISO-2022-JP相当の旧エンコーディング**で保存されている場合がある。LuaLaTeXはソースファイルをUTF-8として読むため、このファイルを読み込んだ瞬間に次のような致命的エラーになる。
+
+  ```text
+  ! Text line contains an invalid character.
+  l.138 \def\lstlistingname{^^[$B%=!<%9%3!<%I^^[(B}
+  ```
+
+  対処は、当該ファイルをUTF-8に変換するだけでよい（中身はただの `\def\lstlistingname{ソースコード}` 等で、pTeX固有の処理は含まれていなかった）。
+
+  ```sh
+  iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting-utf8.sty
+  mv jlisting.sty jlisting-original.sty.bak && mv jlisting-utf8.sty jlisting.sty
+  ```
+
+  事前にエンコーディングを確認するには、該当行をエディタで開くか、`grep -n 'lstlistingname'` の出力が文字化けしていないかを見るとよい。
+- **BibTeXは `upbibtex -kanji=utf8` を使う**：プレーンな `bibtex` コマンドでは、和文を含む `.bib` ファイル＋ `ipsjsort.bst`/`ipsjunsrt.bst` の組み合わせで `"XXX" is a string literal, not an integer, for entry truncation` のような大量のエラーが出ることがある（バイト単位処理のためUTF-8マルチバイト文字の境界を誤認識する）。`upbibtex -kanji=utf8 <jobname>` を使えば問題なく `.bbl` が生成できる。リポジトリの `latexmkrc`（`$bibtex = 'pbibtex %O %B';`）をLuaLaTeX用に書き換える場合は `$bibtex = 'upbibtex -kanji=utf8 %O %B';` 等にするとよい。
+- **`uplatex` のような未知のクラスオプションは無害**：`\documentclass[...,uplatex,...]{ipsj-lualatex}` のように、本クラスが宣言していないオプション名が紛れていても、`\ProcessOptions` はそれを無視し最後に "Unused global option(s)" という警告を出すだけで、コンパイルは止まらない（7件中1件で確認）。旧原稿のオプション指定をそのまま使い回しても実害はない。
+- **その他、特に問題なく動作したサードパーティパッケージ**：`amsmath`, `colortbl`, `ascmac`, `subcaption`, `multirow`, `xcolor`, `tcolorbox`, `inconsolata`, `algorithm`/`algorithm2e`/`algpseudocode`, `slashbox`, `enumitem`, `cite`, `url`/`xurl`, `comment`, 自作の下線パッケージ（`udline.sty`、`\iftdir` 等汎用的なLaTeX2eの書き方のみを使用）。これらは`graphicx`系以外は元々ドライバオプションを取らないため変更不要だった。
 
 ## 7. 未検証・未対応の既知事項
 
