@@ -164,10 +164,20 @@
 %% override \bfseries/\textbf on Japanese text would render in bold
 %% Mincho instead, which looks wrong for any user-authored \textbf{...}
 %% that isn't covered by the class's own \gtfamily\bfseries call sites.
-%% Declaring Gothic as Mincho's BoldFont replicates the original
-%% substitution globally, for every \bfseries+Mincho combination.
-\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic}]
-\setsansjfont{Harano Aji Gothic}
+%%
+%% Crucially, the weight that substitutes in is "Harano Aji Gothic
+%% Medium" -- NOT Gothic's own Bold face. Checking the original's PDF
+%% output confirms it only ever embeds HaranoAjiGothic-Medium, never
+%% HaranoAjiGothic-Bold, anywhere (see CLAUDE.md): the historical
+%% commercial font this traces back to ("GothicBBB-Medium") only ever
+%% had the one weight, called Medium for commercial-naming reasons, not
+%% because it sits between a lighter and a bolder relative. So \bfseries
+%% on Mincho -- and \gtfamily\bfseries, used throughout this class for
+%% the same substitution (titles, section heads, captions, labels) --
+%% must resolve to that same Medium face, not to genuine bold Gothic, or
+%% headings come out visibly heavier than the original.
+\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]
+\setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
 \renewcommand{\kanjifamilydefault}{\mcdefault}
 
 \ifDS@tate

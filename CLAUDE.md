@@ -514,11 +514,13 @@
 
 **原因**：§4.16で発見した「明朝に太字が無いので原文では常にゴシックで代用される」という現象に対し、当時の対処は**クラス内部が`\bfseries`を呼ぶ既知の呼び出し箇所**（`\GAIYOU`/`\paragraph`/`\@makecaption`等）にのみ`\gtfamily`を個別に追加するという、対症療法的な修正だった。原稿の著者が自分の本文や表の中で**直接`\textbf{和文}`や`\bfseries`を書いた場合**は、クラスが関知できないためこの個別パッチの対象外となり、`Harano Aji Mincho`が実際にBoldウェイトを持つ（§2.2）ことから、そのまま本物の太字明朝で出力されていた。これは「クラスの呼び出し箇所を1つずつ塞ぐ」というアプローチの構造的な限界であり、ユーザー原稿の全ての`\textbf`呼び出しを事前に列挙することは不可能である。
 
-**対処**：個別パッチ方式をやめ、フォント宣言そのものを原文の挙動に合わせた。`\setmainjfont{Harano Aji Mincho}`に`[BoldFont={Harano Aji Gothic}]`オプションを追加し、**「Minchoの太字はGothicで代用する」という代替規則自体をfontspec/NFSSレベルで宣言**した。これにより、クラス内部の呼び出しか原稿側の直接呼び出しかを問わず、`\mcfamily`下での`\bfseries`/`\textbf`は全て自動的にGothic-Boldへ差し替わるようになった。§4.16で個別追加した`\gtfamily\bfseries`／`\ipsj@boldlabel`の呼び出しは、この大域的な代替により実質的に冗長になったが、二重適用しても無害なため削除はしていない。
+**対処**：個別パッチ方式をやめ、フォント宣言そのものを原文の挙動に合わせた。`\setmainjfont{Harano Aji Mincho}`に`[BoldFont={Harano Aji Gothic}]`オプションを追加し、**「Minchoの太字はGothicで代用する」という代替規則自体をfontspec/NFSSレベルで宣言**した。これにより、クラス内部の呼び出しか原稿側の直接呼び出しかを問わず、`\mcfamily`下での`\bfseries`/`\textbf`は全て自動的にGothicへ差し替わるようになった。§4.16で個別追加した`\gtfamily\bfseries`／`\ipsj@boldlabel`の呼び出しは、この大域的な代替により実質的に冗長になったが、二重適用しても無害なため削除はしていない。
 
-**結果**：5つの公式サンプル文書、および全14件の実文書テストでページ数に変化なし、エラーなし。ビルドログの埋め込みフォント一覧から`HaranoAjiMincho-Bold.otf`が消え、該当箇所は`HaranoAjiGothic-Bold.otf`で描画されるようになったことを確認した。
+**結果**：5つの公式サンプル文書、および全14件の実文書テストでページ数に変化なし、エラーなし。ビルドログの埋め込みフォント一覧から`HaranoAjiMincho-Bold.otf`が消えたことを確認した。
 
 **教訓**：「クラスがどこで`\bfseries`を呼んでいるか」を網羅するアプローチ（§4.16）は、**クラス自身の呼び出し**に対しては有効だが、**原稿側の直接呼び出し**には原理的に対応できない。フォント代替が必要な事象を見つけたら、個別の呼び出し箇所にパッチを当てる前に、「フォント宣言自体（`\setmainjfont`等のオプション）でその代替を表現できないか」を先に検討するべきだった。
+
+**追記（後日、ウェイトの誤りが発覚——§4.28参照）**：この時点での対処は代替先を`Harano Aji Gothic`（無指定時はBoldウェイトを意味する、fontspecの`BoldFont`既定の解釈）としていたが、これは**誤り**だった。ユーザーから「ゴシック体にした文字が太すぎるのではないか」という指摘を受けて再調査した結果、原文が実際に代用していたのはGothicの**Boldウェイトではなく、唯一の標準ウェイトである`Medium`**（商用フォント時代の`GothicBBB-Medium`に由来し、Light/Boldのような相対的な太さ区分ではなく単にそのフォント自体の名称）だったことが判明した。詳細と修正は§4.28に記録する。
 
 ### 4.22 `table*`の和文キャプションが原文では中央揃えなのに、移植先は左寄せになる（重要）
 
@@ -595,6 +597,50 @@
 つまり、`equation`の前後空白を実際に決めているのは、TeXエンジンが`$$...$$`（display math）の直前テキストの残り幅と数式自身の幅を比較して`\abovedisplayskip`（広い方）と`\abovedisplayshortskip`（ほぼ0）のどちらを採用するかを決める**エンジンプリミティブレベルの自動判定**であり、LaTeXのクラスファイルからは直接介入できない領域である。この判定はテキストフォント・数式フォントの字送り次第で結果が変わるため、フォントが異なれば（§1.2の通り本プロジェクトでは数式フォントも含め原文と同一にはできない）、同じソースでもどちらの skip が選ばれるかが変わることがある。
 
 **結論**：クラス側に対応漏れは無いことを確認済み。§4.23と同種の「フォントメトリクス差に起因するTeXエンジンレベルの分岐結果の違い」であり、修正は見送った。
+
+### 4.27 `ses-esample-lualatex.tex`に`txfonts`の除去漏れがあり、英文の`\bfseries`が全箇所で効かなくなっていた（重要）
+
+**症状**：ユーザーが`ses-esample-lualatex.pdf`を目視確認したところ、タイトル・節見出し・`Abstract:`など、本来太字になるべき箇所がことごとく太字になっていなかった（和文ドキュメントで言えばゴシック相当の強調が、欧文では単純に「太字になる」だけで済むはずの場所）。
+
+**原因**：`ses-esample-lualatex.tex`の29〜37行目に
+
+```latex
+\usepackage[varg]{txfonts}%%!!
+\makeatletter%
+\input{ot1txtt.fd}
+\makeatother%
+```
+
+が残っていた。これは原文`ses-esample.tex`（pLaTeX用）に存在する記述で、`txfonts`はpdfTeX時代のOT1/T1エンコーディング向けPostScript Type1フォントパッケージであり、§6.3の移植手順に明記した「`\usepackage[varg]{txfonts}`と続く`\makeatletter \input{ot1txtt.fd} \makeatother`を削除する」という、他の全ての移植済みサンプル（`jsample-lualatex.tex`/`esample-lualatex.tex`等）では正しく実施されていた手順が、この`ses-esample-lualatex.tex`だけ**実施されていなかった**。`txfonts`はLuaLaTeX+`fontspec`の`TU`（Unicode）エンコーディング体系とは無関係なOT1/T1のフォントシェイプを宣言するため、これが読み込まれるとNFSSの内部状態が混乱し、英文の`\bfseries`がどこでも太字シェイプを見つけられず常に通常体に静かにフォールバックしていた（エラーや警告は出ない）。
+
+**発見の経緯**：まず最小再現（`[submit,ses,english]`で簡単な`\title`＋`\section`のみの文書）を作成したところ`\bfseries`は正常に効いたため、クラス自体（`ipsj-lualatex.cls`）のSESモード分岐に問題は無いと判断した。次に実際の`ses-esample-lualatex.tex`の差分を原文と比較する中で、§6.3の移植手順チェックリストの中の「`txfonts`除去」の項目がこのファイルだけ未実施だったことに気づいた。
+
+**対処**：`esample-lualatex.tex`で既に行っていたのと同じ要領で、`\usepackage[varg]{txfonts}`等の4行を削除し、「pdfTeX時代のパッケージなので不要」という説明コメントに置き換えた。
+
+**結果**：`ses-esample-lualatex.pdf`は8ページ→**7ページ**（原文`ses-esample.pdf`と完全一致）に変化し、タイトル・各見出し・`Abstract:`が正しく太字で表示されるようになった。§6.5の検証結果テーブルを「8/7（構造一致、フォントメトリクス差）」から「7/7（完全一致）」に更新した。すなわち、§6.5で当時「既知のフォントメトリクス差」として受け入れていた1ページ差は、実際には**クラスの問題ではなくテスト文書側の移植手順漏れ**が原因だったことになる。
+
+**教訓**：原文との1ページ程度の差は安易に「フォントメトリクス差」で片付けず、まず§6.3に列挙した移植手順（ドライバオプション除去・`txfonts`除去・`pxjahyper`除去等）が**当該ファイルに対して本当に全部実施されているか**を再確認する価値がある。`grep -l txfonts *.tex`のような簡単な横断検索で、複数ある`-lualatex.tex`ファイルのうち1つだけ手順が漏れていることはすぐに見つかる。今回は症状（太字が効かない）が先に見つかったために原因を探る形になったが、本来は移植直後にこの種の横断チェックをしていれば未然に防げた。
+
+### 4.28 「太字明朝→ゴシック代用」の代用先ウェイトがBoldではなくMediumだった（§4.21の訂正、重要）
+
+**症状**：ユーザーが多数のサンプルを目視確認した結果、§4.21で「Minchoの太字をGothicに代用する」よう修正した箇所について、「タイトルをはじめ、ゴシック体にされた文字が全体的に太すぎるのではないか」という指摘を受けた。
+
+**原因**：§4.21の対処は`\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic}]`としていたが、fontspecの`BoldFont`オプションにファミリ名だけを与えると、そのファミリの**Boldウェイト**（`HaranoAjiGothic-Bold.otf`）を自動的に探して採用する。これは「Minchoの太字はGothicで代用される」という事実は正しく再現していたが、**代用先のウェイトを取り違えていた**。
+
+ユーザーの指摘を受けて`jsample.pdf`（原文）の埋め込みフォントを改めて確認したところ、§4.16で既に「文書全体を通じて`HaranoAjiGothic-Medium`しか埋め込まれておらず`HaranoAjiGothic-Bold`は存在しない」という記録を残していたにもかかわらず、§4.21の実装時にはこの「**Medium**」という具体的なウェイトの指定を見落とし、単に「Gothicファミリ」を指せば十分と誤って判断していた。`Harano Aji Gothic`ファミリには`Regular`・`Medium`・`Bold`の3ウェイトが個別ファイルとして存在し（`HaranoAjiGothic-Regular.otf`/`-Medium.otf`/`-Bold.otf`）、原文が前提とする商用フォント「GothicBBB-Medium」（モリサワ、§2.2参照）の"Medium"は、LightとBoldの中間に位置する相対的なウェイト名ではなく、**当時その書体が標準ウェイトとして持っていた唯一の実体の固有名**である。つまり原文において和文の`\bfseries`は、串字面そのものを太くする処理ではなく、明朝からゴシックという**別書体に切り替えるだけ**で太く見える効果を得ており、Gothic自体をさらに太らせる（Boldにする）処理は行われていなかった。
+
+**対処**：`\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]`に変更し、さらに`\gtfamily`自体（`\setsansjfont`）も`Harano Aji Gothic Medium`を既定とし、そのBoldFontも同じ`Harano Aji Gothic Medium`を指すように変更した：
+
+```latex
+\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]
+\setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
+```
+
+`\setsansjfont`側もBoldFontを同じファイルにしたのは、クラス内部の既存パッチ（`\jtitlefont`/`\section`/`\ipsj@boldlabel`等、§4.16で追加した`\gtfamily\bfseries`の組み合わせ）が、Gothicに切り替えた**上で重ねてBold化**してしまうと、Mincho直下で`\bfseries`を呼んだ場合（Medium止まり）と結果が食い違ってしまうため。`\gtfamily\bfseries`も`\gtfamily`単体と全く同じ見た目（Medium止まり）になるよう統一した。
+
+**結果**：`jsample-lualatex.pdf`のタイトルを原文`jsample.pdf`と同一座標で切り出し比較したところ、字形・線の太さが画素単位で一致することを確認した。ビルドログの埋め込みフォントは`HaranoAjiGothic-Medium`のみとなり、`-Bold`/`-Regular`はいずれも使われなくなった。5つの公式サンプル文書、全14件の実文書テストでページ数に変化なし（9/8/6/6/7、9/13/9/9/8/9/9/9/8/9/8/8/2）、エラーなし。
+
+**教訓**：§4.16で「文書全体を通じてMediumしか埋め込まれていない」という具体的な事実を**既に発見・記録していた**にもかかわらず、§4.21でその代用機構をfontspecレベルに一般化する際、「ウェイトの具体的な値」という肝心な情報を引き継がずに実装してしまった。過去の自分の調査記録（CLAUDE.md自身）に書かれた具体的な数値・名称は、後続の修正で再利用する際に**再度読み直して合致しているか確認する**必要がある。「ゴシックに切り替わっている」という大枠の見た目だけでは正誤を判定できず、目視で「太すぎないか」という違和感に気づいたユーザーの指摘がなければ、この誤りはそのまま残っていた可能性が高い。
 
 ## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
@@ -750,9 +796,11 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 | テスト文書 | 元ファイル | モード | 新/元のページ数 | 結果 |
 |---|---|---|---|---|
 | `ses-sample-lualatex.tex` | `ses-sample.tex`（和文） | `submit,ses,noauthor` | 6 / 6 | 完全一致。ヘッダ・フッタ・ページ番号が全頁で正しく非表示 |
-| `ses-esample-lualatex.tex` | `ses-esample.tex`（英文） | `submit,ses,english` | 8 / 7 | 構造は一致、1ページ分の行送り差（既知のフォントメトリクス差。§6.2参照） |
+| `ses-esample-lualatex.tex` | `ses-esample.tex`（英文） | `submit,ses,english` | 7 / 7 | 完全一致（§4.27の`txfonts`除去漏れ修正後） |
 
 この検証の過程で、`ses-esample-lualatex.tex` の著者欄（3名連名）の上付き文字が崩れていることに気づき、§4.9に記載した**英文モード `\author` の実バグ**を発見・修正した（`ses`機能自体のバグではなく、既存の`esample-lualatex.tex`にも内在していた）。
+
+当初は8/7（1ページ差）として「フォントメトリクス差由来の許容範囲内の差」と記録していたが、§4.27で原文`ses-esample.tex`に存在する`\usepackage[varg]{txfonts}`＋`\input{ot1txtt.fd}`（§6.3の移植手順で除去すべきpLaTeX時代の遺物）が`ses-esample-lualatex.tex`にだけ残っていたことが発覚し、除去した結果7/7の完全一致に修正された。
 
 ### 6.6 `ses` オプションの実在する研究論文5件での追加検証
 
