@@ -119,7 +119,7 @@ lualatex main.tex
 - `\begin{figure}`, `\begin{table}`, `\caption`, `\ecaption`, `\CaptionType`
 - `\twocolcaption`, `\twocolecaption`, `\twocolfig`
 - `\figref`, `\Figref`, `\figsref`, `\Figsref`, `\tabref`, `\Tabref`, `\tabsref`, `\Tabsref`
-- `\begin{thebibliography}`, `\Cite`
+- `\begin{thebibliography}`, `\cite`, `\Cite`（`\cite{a,b,c}`は引用番号を自動的に昇順ソート・重複除去してから`[...]`で出力）
 - `\begin{acknowledgment}`
 - `\begin{biography}`, `\profile`（`\profile*`含む）
 - `\received`, `\accepted`, `\rereceived`, `\rerereceived`, `\released`, `\Presented`、および和文別名 `\受付`, `\採録`, `\再受付`, `\再再受付`, `\発表`
@@ -128,6 +128,8 @@ lualatex main.tex
 - `enumerate`, `itemize`, `description`（IPSJ仕様の番号書式・字下げ。`enumerate`は`(1)`形式）、`\Enumerate`, `\Itemize`, `\Description`, `\ENUMERATE`, `\ITEMIZE`, `\DESCRIPTION`, `enumerate*`, `itemize*`, `description*`（大文字・アスタリスク版は字下げ幅のみ異なる）
 - `quote`, `quotation`, `verse`（IPSJ仕様の`\Cwd`ベースの字下げ）
 - `\newtheorem`（IPSJ仕様の定理見出し書式）、`recommendation` 環境（推薦文）
+- `equation`, `eqnarray`, `\[ \]`（数式は中央揃えではなく原文と同じ常時フラッシュレフト配置。`\mathindent`は`1\zw`）
+- `\ruby`（ルビ）, `\QED`（証明終わりの$\Box$）, `\MARU{n}`（丸囲み数字）, `\contact`（後方互換のため受理するだけで何も出力しない）, `\Hline`（表組み用の太さ0.4mmルール）, `\ddash`, `\doubledash`, `\dummyfigure`, `\dummyfiguret`
 - `\setcounter{巻数}{...}`, `\setcounter{号数}{...}`, `\setcounter{月数}{...}`（和文カウンタ名のエイリアス）
 
 ### 7. `\zw` を裸の単位として書いていた箇所は要修正
@@ -184,7 +186,8 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 ## 既知の制限
 
 - 全ての論文誌種別オプション（`ACS`/`PRO`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`TCE`）のヘッダ文字列・DOI表記・年度算出式は移植していますが、個別に組版確認をしたのは `techrep` と `JIP` のみです。
-- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境および`enumerate`/`itemize`/`description`本体は全テスト文書で使用されており、原文と画素単位で一致することを確認済みです）。
+- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`eqnarray`/`\[ \]` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境、`enumerate`/`itemize`/`description`本体、`equation`環境は全テスト文書（の少なくとも1つ）で使用されており、原文と画素単位で一致することを確認済みです）。
 - `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、原文との画素単位の比較による検証はできていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
+- `\cite`の引用番号自動ソートは、`esample-lualatex.tex`の複数引用（`\cite{companion,latex}`）で動作することを視認しましたが、並べ替えが実際に発生するケース（番号が逆順または不連続な複数引用）はテスト文書群に無く、ソート処理自体は未検証です。
 
 詳細な技術的決定の根拠・移植作業の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
