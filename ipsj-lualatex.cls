@@ -24,7 +24,13 @@
 \DeclareOption{onecolumn}{\PassOptionsToClass{onecolumn}{article}}
 \DeclareOption{twocolumn}{\PassOptionsToClass{twocolumn}{article}}
 \DeclareOption{leqno}{\PassOptionsToClass{leqno}{article}}
-\DeclareOption{fleqn}{\PassOptionsToClass{fleqn}{article}}
+%% fleqn is always on regardless of this option (see the \LoadClass call
+%% below): the original unconditionally re-embeds a copy of the kernel's
+%% own fleqn.clo at the end of ipsj.cls, so its OWN "fleqn" class option
+%% (which would just \input the same file again) never had any effect.
+%% Declaring it here as a no-op only avoids an "unused option" warning
+%% for old documents that still pass it.
+\DeclareOption{fleqn}{}
 \DeclareOption{openbib}{\PassOptionsToClass{openbib}{article}}
 \DeclareOption{draft}{\PassOptionsToClass{draft}{article}}
 \DeclareOption{final}{\PassOptionsToClass{final}{article}}
@@ -49,6 +55,11 @@
 \DeclareOption{techrep}{\DS@techreptrue}
 \newif\ifDS@preface  \DS@prefacefalse
 \DeclareOption{preface}{\DS@prefacetrue}
+%% "alone" (preface mode only): the preface's own page range is a
+%% single page rather than a span, so the running head shows just the
+%% first-page reference instead of "first--last".
+\newif\ifDS@alone    \DS@alonefalse
+\DeclareOption{alone}{\DS@alonetrue}
 %% SES (IPSJ/SIGSE Software Engineering Symposium) is a techrep variant
 %% with the running head, DOI line, copyright notice and page number all
 %% suppressed; selecting it implies techrep, matching the original
@@ -128,7 +139,12 @@
 
 \ExecuteOptions{twoside,twocolumn,final}
 \ProcessOptions\relax
-\LoadClass{article}
+%% Always load article.cls's own fleqn.clo: the original unconditionally
+%% re-embeds a copy of that same kernel file at the end of ipsj.cls (see
+%% the "Equation environments" subsection below), so flush-left
+%% equations are baked-in default IPSJ behaviour, not something only
+%% "fleqn" requests.
+\LoadClass[fleqn]{article}
 
 %% =================================================================
 %% 2. Engine setup: LuaTeX-ja and fonts
@@ -148,6 +164,33 @@
 
 \ifDS@tate
   \AtBeginDocument{\tate}
+\fi
+
+%% Kinsoku (line-breaking prohibition) refinements beyond LuaTeX-ja's own
+%% defaults (loaded automatically as part of \RequirePackage{luatexja},
+%% from ltj-kinsoku.tex). That default table already matches the
+%% original's bracket/quote-pair penalties exactly (both use \@M), so
+%% those are not repeated here. Two genuine differences remain: small
+%% kana get only a weak default penalty (150) where the original used
+%% \@M, and the wave dash has no default prebreakpenalty at all.
+\ifDS@english\else
+  \ltjsetparameter{prebreakpenalty={`ぁ,\@M},prebreakpenalty={`ぃ,\@M},
+    prebreakpenalty={`ぅ,\@M},prebreakpenalty={`ぇ,\@M},
+    prebreakpenalty={`ぉ,\@M},prebreakpenalty={`っ,\@M},
+    prebreakpenalty={`ゃ,\@M},prebreakpenalty={`ゅ,\@M},
+    prebreakpenalty={`ょ,\@M},prebreakpenalty={`ゎ,\@M},
+    prebreakpenalty={`ァ,\@M},prebreakpenalty={`ィ,\@M},
+    prebreakpenalty={`ゥ,\@M},prebreakpenalty={`ェ,\@M},
+    prebreakpenalty={`ォ,\@M},prebreakpenalty={`ッ,\@M},
+    prebreakpenalty={`ャ,\@M},prebreakpenalty={`ュ,\@M},
+    prebreakpenalty={`ョ,\@M},prebreakpenalty={`ヮ,\@M},
+    prebreakpenalty={`ヵ,\@M},prebreakpenalty={`ヶ,\@M},
+    prebreakpenalty={`ー,\@M},prebreakpenalty={`〜,\@M}}
+  %% ASCII quote-like characters: not part of LuaTeX-ja's Japanese
+  %% kinsoku table at all, so the original's two explicit settings
+  %% (weaker than typical kinsoku penalties, hence the literal values
+  %% rather than \@M) are reproduced verbatim.
+  \ltjsetparameter{prebreakpenalty={34,1000},postbreakpenalty={92,1000}}
 \fi
 
 %% =================================================================
@@ -170,6 +213,13 @@
   \def\zh{em}
 \fi
 
+%% \[...\], equation and eqnarray are already in their IPSJ "flush left"
+%% form via \LoadClass[fleqn]{article} above; \mathindent there defaults
+%% to fleqn.clo's own value, which the original overrides to 1\zw, and
+%% \@eqnnum gets an extra 3mm gap before the equation number.
+\mathindent1\zw
+\def\@eqnnum{{\normalfont\normalcolor(\theequation)\hspace*{3mm}}}
+
 %% \Cwd/\Cht/\Cdp/\Cvs: width/height/depth/baselineskip of one full-width
 %% Japanese character at \normalsize, used throughout as grid units for
 %% margins, captions, lists, etc.  In English mode the original class
@@ -179,6 +229,32 @@
 \ifDS@english
   \Cht=7.19269pt \Cdp=1.28441pt \Cwd=8.9005pt \Cvs=12.80592pt
 \fi
+
+%% itemize/enumerate/description spacing: make it perfectly rigid (no
+%% plus/minus stretch) at every nesting depth, matching the original
+%% class. Without this, \flushbottom's column-height balancing dumps
+%% all of its needed stretch into whichever list happens to share a
+%% column with a taller one, producing huge unnatural gaps between
+%% list items that the original never had (standard article.cls's
+%% \@listI etc. all carry generous plus/minus stretch). Depth 1
+%% (\@listi) is also pinned directly inside \normalsize below, since
+%% that is the one that gets re-invoked (and would otherwise be
+%% clobbered) via fontspec's \AtBeginDocument hook; \@listii-vi are
+%% never re-invoked elsewhere, so a one-time fix here is enough.
+%% The original (\lst@listi) also pins \labelsep/\labelwidth/
+%% \rightmargin/\listparindent/\itemindent the same way at every depth;
+%% \enumerate/\itemize/\description set their own values later (see
+%% Sec.14 below) which take precedence, so this only affects other
+%% \list-based constructs (e.g. nested nonstandard list levels).
+%% Defined here (ahead of \normalsize, which references it) rather
+%% than alongside \leftmargini etc. below, purely so the forward
+%% reference from \normalsize's body resolves; the dimensions it
+%% actually uses (\Cwd, \leftmargini) only need to hold their final
+%% values once \@listi etc. are invoked, not at \def time.
+\def\ipsj@listspacing{%
+  \labelsep\Cwd \labelwidth.25\Cwd
+  \rightmargin\z@ \listparindent\z@ \itemindent\z@
+  \partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
 
 %% =================================================================
 %% 4. Font size scale (normalsize: 13Q x 21H Japanese / 13Q x 18H Eng.)
@@ -200,7 +276,7 @@
   %% any reset to a stretchy \@listi here would permanently undo the
   %% rigid list spacing set up below (see CLAUDE.md for the full
   %% writeup of the resulting \flushbottom column-balancing bug).
-  \leftmargin\leftmargini \partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
+  \leftmargin\leftmargini \ipsj@listspacing}
 
 \renewcommand{\small}{%
   \ifDS@english
@@ -281,18 +357,9 @@
 \setlength\marginparsep{5mm}
 \setlength\marginparpush{5\p@}
 
-%% itemize/enumerate/description spacing: make it perfectly rigid (no
-%% plus/minus stretch) at every nesting depth, matching the original
-%% class. Without this, \flushbottom's column-height balancing dumps
-%% all of its needed stretch into whichever list happens to share a
-%% column with a taller one, producing huge unnatural gaps between
-%% list items that the original never had (standard article.cls's
-%% \@listI etc. all carry generous plus/minus stretch). Depth 1
-%% (\@listi) is also pinned directly inside \normalsize above, since
-%% that is the one that gets re-invoked (and would otherwise be
-%% clobbered) via fontspec's \AtBeginDocument hook; \@listii-vi are
-%% never re-invoked elsewhere, so a one-time fix here is enough.
-\def\ipsj@listspacing{\partopsep\z@ \parsep\z@ \topsep\z@ \itemsep\z@}
+%% \ipsj@listspacing is defined in Sec.3 above (ahead of \normalsize,
+%% which references it). \@listii-vi are never re-invoked elsewhere
+%% after this, so defining them once here is enough.
 \def\@listi{\leftmargin\leftmargini \ipsj@listspacing}
 \def\@listii{\leftmargin\leftmarginii \ipsj@listspacing}
 \def\@listiii{\leftmargin\leftmarginiii \ipsj@listspacing}
@@ -352,11 +419,21 @@
 \def\onelineskip{\par\vspace{1\baselineskip}\par}
 \def\halflineskip{\par\vspace{.5\baselineskip}\par}
 
-%% kintou: justify text #2 to width #1 using inter-character glue only
-%% (used for centering short headings such as the appendix banner).
+%% kintou: spread text #2 evenly to width #1 (used for the "付　録"
+%% appendix banner). The original makes \kanjiskip itself stretchable
+%% (0pt plus 1fill minus 1fill) so the box's extra width is absorbed
+%% BETWEEN #2's characters rather than around them; a plain bookend
+%% \hskip (the previous implementation here) instead centers #2 as a
+%% solid block, since LuaTeX-ja's own inter-character glue is finite
+%% and never competes with an outer infinite-order \hskip in the same
+%% list. \ltjsetparameter{kanjiskip=...} is LuaTeX-ja's equivalent of
+%% pTeX's directly-assignable \kanjiskip register.
 \def\kintou#1#2{%
   \ifDS@english\relax\else
-    \leavevmode\hbox to #1{\hskip0pt plus 1fill minus 1fill\relax#2\hskip0pt plus 1fill minus 1fill\relax}%
+    \leavevmode\hbox to #1{%
+      \ltjsetparameter{kanjiskip={0pt plus 1fill minus 1fill},%
+        xkanjiskip={0pt plus 1fill minus 1fill}}%
+      #2}%
   \fi}
 
 %% =================================================================
@@ -371,20 +448,24 @@
 \def\ipsj@year{%
   \ifnum\c@year<0
     \@tempcnta\c@volume
-    \ifDS@JIP \advance\@tempcnta 1991
-    \else\ifDS@ACS \advance\@tempcnta 2006
-    \else\ifDS@PRO \advance\@tempcnta 2006
-    \else\ifDS@TOD \advance\@tempcnta 2006
-    \else\ifDS@TOM \advance\@tempcnta 2006
-    \else\ifDS@TBIO \advance\@tempcnta 2006
-    \else\ifDS@SLDM \advance\@tempcnta 2006
-    \else\ifDS@CVA \advance\@tempcnta 2007
-    \else\ifDS@CDS \advance\@tempcnta 2009
-    \else\ifDS@DC \advance\@tempcnta 2011
-    \else\ifDS@DCON \advance\@tempcnta 2011
-    \else\ifDS@TCE \advance\@tempcnta 2013
+    \ifDS@JIP \advance\@tempcnta 1992
+    \else\ifDS@ACS \advance\@tempcnta 2007
+    \else\ifDS@PRO \advance\@tempcnta 2007
+    \else\ifDS@TOD \advance\@tempcnta 2007
+    \else\ifDS@TOM \advance\@tempcnta 2007
+    \else\ifDS@TBIO \advance\@tempcnta 2007
+    \else\ifDS@SLDM \advance\@tempcnta 2007
+    \else\ifDS@CVA \advance\@tempcnta 2008
+    \else\ifDS@CDS \advance\@tempcnta 2010
+    \else\ifDS@DC \advance\@tempcnta 2012
+    \else\ifDS@DCON \advance\@tempcnta 2012
+    \else\ifDS@TCE \advance\@tempcnta 2014
+    %% No specific journal type selected: "english" alone (with none of
+    %% the journal-type options above, which would already have matched
+    %% by this point) used the same fallback as JIP in the original.
+    \else\ifDS@english \advance\@tempcnta 1992
     \else \advance\@tempcnta 1959
-    \fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
+    \fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi\fi
     \number\@tempcnta
   \else
     \number\c@year
@@ -947,6 +1028,75 @@
   \fi
   \vskip\shubetutitlesep
   \begin{center}\authortitle\end{center}}
+
+%% A preface has no abstract/keywords/reception dates, unlike the
+%% default and techrep \authortitle: just title, author and body.
+\ifDS@english
+\def\authortitle{%
+  {\Engtitlefont{\@title}\par}%
+  \vskip\Etitleauthorsep
+  {\Engeauthorfont\authoroutput{e}\par}%
+  \vskip\Eauthorreceivesep
+  \vskip\JEhonbunsep}
+\else
+\def\authortitle{%
+  {\jtitlefont{\@title}\par}%
+  \vskip\Jtitlejauthorsep
+  {\authorfont\authoroutput{}\par}%
+  \vskip\Jauthorjreceivesep
+  \vskip\JEhonbunsep}
+\fi
+
+%% Preface category labels are never printed (matches ipsjpref.sty,
+%% which redefines these to invisible placeholders).
+\def\ipsj@shubetu@DAM{\leavevmode}
+\def\ipsj@shubetu@Data{\leavevmode\phantom{Database/Software Paper}}
+\def\ipsj@shubetu@Survey{\leavevmode\phantom{Survey Paper}}
+\def\ipsj@shubetu@TBIOM{\leavevmode\phantom{Original Paper}}
+\def\ipsj@shubetu@Short{\leavevmode\phantom{Short Paper}}
+
+%% Preface running head: same Vol./DOI scaffolding as the default
+%% mode's \ps@IPSJTITLEheadings, except the page reference collapses
+%% to a single page under "alone", and a preface's "No.X" is always
+%% shown (unlike the default mode's CVA/TBIO/SLDM/JIP suppression,
+%% which only matters for journal types a preface is never tagged
+%% with in practice).
+\ifDS@english
+\def\ps@IPSJTITLEheadings{%
+  \def\@oddhead{\@Ltop\rlap{\small{\HeadfontE{\signame}}%
+    \hskip12\Q{\HeadfontE{Vol.\number\c@volume}}%
+    \ifDS@alone
+      \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}}}\ %
+    \else
+      \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+    \fi
+    \HeadfontE{(\@monthyear)}}%
+    \smash{\raisebox{-6mm}{\rlap{\DOIHeadfont\ipsj@doi}}}%
+    \hfil\@Rtop}%
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\@Lbot\rlap{\bothashira
+      \copyright\ \@footyear\ Information Processing Society of Japan}%
+    \hfil{\botnomble\thepage}\@Rbot}%
+  \let\@evenfoot\@oddfoot
+  \let\@mkboth\@gobbletwo}
+\else
+\def\ps@IPSJTITLEheadings{%
+  \def\@oddhead{\@Ltop\rlap{\small{\HeadfontJ{\signame}}%
+    \hskip12\JQ{\HeadfontE{Vol.\number\c@volume}}%
+    \ifDS@alone
+      \hskip12\JQ{\HeadfontE{\pageref{ipsj@firstpage}}}\ %
+    \else
+      \hskip12\JQ{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+    \fi
+    \HeadfontE{(\@monthyear)}}%
+    \hfil\@Rtop}%
+  \let\@evenhead\@oddhead
+  \def\@oddfoot{\@Lbot\rlap{\bothashira
+      \textcopyrighttx\ \@footyear\ Information Processing Society of Japan}%
+    \hfil{\botnomble\thepage}\@Rbot}%
+  \let\@evenfoot\@oddfoot
+  \let\@mkboth\@gobbletwo}
+\fi
 \fi
 
 %% --- techrep mode overrides (mirrors ipsjtech.sty) ----------------
@@ -1060,13 +1210,27 @@
     \ifDS@english{\HeadfontE{\signame}}\else{\HeadfontJ{\signame}}\fi
     \ifDS@english
       \hskip12\Q{\HeadfontE{Vol.\number\c@volume}}%
-      \hskip1em{\HeadfontE{No.\number\c@number}}%
-      \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+      %% "No.X" is omitted for journal types whose issues aren't
+      %% numbered the same way (and for "preprint", which has no
+      %% issue number to print yet).
+      \ifDS@CVA\else\ifDS@TBIO\else\ifDS@SLDM\else
+      \ifDS@preprint\else\ifDS@JIP\else
+        \hskip1em{\HeadfontE{No.\number\c@number}}%
+      \fi\fi\fi\fi\fi
+      \ifDS@abstract
+        \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}}}\ %
+      \else
+        \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+      \fi
       \HeadfontE{(\@monthyear)}%
     \else
       \hskip12\JQ{\HeadfontE{Vol.\number\c@volume}}%
       \hskip12\JQ{\HeadfontE{No.\number\c@number}}%
-      \hskip12\JQ{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+      \ifDS@abstract
+        \hskip12\Q{\HeadfontE{\pageref{ipsj@firstpage}}}\ %
+      \else
+        \hskip12\JQ{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
+      \fi
       \HeadfontE{(\@monthyear)}%
     \fi}%
     \smash{\raisebox{-6mm}{\rlap{\DOIHeadfont\ipsj@doi}}}%
@@ -1171,20 +1335,268 @@
 \@namedef{ipsj@nodot@paragraph}{1}
 \@namedef{ipsj@nodot@subparagraph}{1}
 
-\renewcommand{\section}{\@startsection{section}{1}{\z@}%
-  {.5\Cvs}{.00001\Cvs}%
+%% \section is NOT a plain before/after-skip heading in the original:
+%% it is set inside a box of fixed height (2.43\Cvs when the number+
+%% title fit on one line; a slightly different padding when they
+%% overflow \columnwidth) with the normal interline glue around it
+%% explicitly cancelled (\vspace{-\baselineskip} before this box,
+%% \prevdepth=-1000pt after it) so the box height alone determines the
+%% visible gap.  A plain \@startsection (the previous implementation
+%% here) leaves almost no gap below the heading, because its "after"
+%% skip argument is genuinely near-zero in the original too -- the
+%% real gap always came from the box, never from that skip.  See
+%% CLAUDE.md Sec.4.17.  \@startsectionA/\@sectA/\@ssectA below port the
+%% original's \@startsectionA/\@sectA/\@ssectA verbatim, with
+%% \ipsj@secboxa/\ipsj@secboxb standing in for the original's
+%% \SECTwd/\@tempboxb (dedicated registers, per the Sec.4.4 box-
+%% reentrancy lesson). \@xsect is also ported verbatim even though the
+%% one line where it differs from the article.cls kernel's own copy
+%% (\clubpenalty\z@ vs \@M) is a branch nothing in this class reaches,
+%% since every heading level's "after" skip is a strictly positive
+%% \Cvs-based value; porting it anyway costs nothing and removes a
+%% spot where a future edit could silently reintroduce the kernel's
+%% behaviour. \@hangfrom/\@afterheading are reused unchanged from the
+%% kernel: the original's own copies are functionally identical.
+\newbox\ipsj@secboxa
+\newbox\ipsj@secboxb
+\newlength\section@height
+\section@height\lineskip
+\advance\section@height-\topskip
+\advance\section@height\baselineskip
+
+\def\@startsectionA#1#2#3#4#5#6{%
+  \if@noskipsec \leavevmode \fi
+  \par
+  \@tempskipa #4\relax
+  \@afterindenttrue
+  \ifdim \@tempskipa <\z@
+    \@tempskipa -\@tempskipa \@afterindentfalse
+  \fi
+  \if@nobreak
+    \everypar{}%
+  \else
+    \addpenalty\@secpenalty\addvspace\@tempskipa
+  \fi
+  \@ifstar
+    {\@ssectA{#3}{#4}{#5}{#6}}%
+    {\@dblarg{\@sectA{#1}{#2}{#3}{#4}{#5}{#6}}}}
+
+\ifDS@english
+\def\@sectA#1#2#3#4#5#6[#7]#8{%
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+  \else
+    \refstepcounter{#1}%
+    \protected@edef\@svsec{\@seccntformat{#1}\relax}%
+  \fi
+  \@tempskipa #5\relax
+  \ifdim \@tempskipa>\z@
+    \setbox\ipsj@secboxa\hbox{%
+      \begingroup
+      \noindent
+      #6{\@hangfrom{\hskip #3\relax\@svsec}}%
+      \interlinepenalty \@M {{#8}}%
+      \endgroup}%
+    \setbox\ipsj@secboxb\hbox{#6{%
+      {\hskip #3\relax{\csname #2@font\endcsname \@svsec}}}}%
+    \ifdim \wd\ipsj@secboxa > \columnwidth
+      \@tempdima\columnwidth
+      \advance\@tempdima-\wd\ipsj@secboxb
+      \begingroup
+      \mbox{}\par%
+      \vspace{-\baselineskip}%%
+      \addvspace{\section@height}%
+      \addvspace{-.9mm}%
+      \noindent%
+      #6{\@hangfrom{\hskip #3\relax\@svsec}%
+        \interlinepenalty \@M
+        \hangindent\wd\ipsj@secboxb\hangafter=1
+        #8\@@par}\nobreak%
+      \vspace{-.7mm}%
+      \addvspace{\section@height}%
+      \endgroup
+    \else
+      \begingroup
+      \mbox{}\par%
+      \vspace{-\baselineskip}%%
+      \noindent
+      {\vbox to 8.65mm
+        {\vfill%
+         \addvspace{.54\Cvs}
+         #6{\@hangfrom{\hskip #3\relax\@svsec}%
+           \interlinepenalty \@M {#8}\@@par%
+         }\nobreak%
+         \vfill
+        }%
+       }
+      \endgroup
+    \fi
+    \par
+    \csname #1mark\endcsname{#7}%
+    \addcontentsline{toc}{#1}{%
+      \ifnum #2>\c@secnumdepth \else%
+        \protect\numberline{\csname the#1\endcsname}\hskip1em%
+      \fi%
+      {#7}}%
+  \else
+    \def\@svsechd{%
+      #6{\hskip #3\relax
+      \@svsec #8}%
+      \csname #1mark\endcsname{#7}%
+      \addcontentsline{toc}{#1}{%
+        \ifnum #2>\c@secnumdepth \else%
+         \protect\numberline{\csname the#1\endcsname}%
+        \fi%
+        #7}}%
+  \fi
+  \@xsect{#5}}
+\else
+\def\@sectA#1#2#3#4#5#6[#7]#8{%
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+  \else
+    \refstepcounter{#1}%
+    \protected@edef\@svsec{\@seccntformat{#1}\relax}%
+  \fi
+  \@tempskipa #5\relax
+  \ifdim \@tempskipa>\z@
+    \setbox\ipsj@secboxa\hbox{%
+      \begingroup
+      \noindent
+      #6{\@hangfrom{\hskip #3\relax\@svsec}}%
+      \interlinepenalty \@M {{#8}}%
+      \endgroup}%
+    \setbox\ipsj@secboxb\hbox{#6{%
+      {\hskip #3\relax{\csname #2@font\endcsname \@svsec}}}}%
+    \ifdim \wd\ipsj@secboxa > \columnwidth
+      \@tempdima\columnwidth
+      \advance\@tempdima-\wd\ipsj@secboxb
+      \begingroup
+      \mbox{}\par%
+      \vspace{-\baselineskip}%%
+      \addvspace{.65\Cvs}%
+      \noindent%
+      #6{\@hangfrom{\hskip #3\relax\@svsec}%
+        \interlinepenalty \@M
+        \hangindent\wd\ipsj@secboxb\hangafter=1
+        #8\@@par}\nobreak{\par}%
+      \addvspace{.74\Cvs}%
+      \endgroup
+    \else
+      \begingroup
+      \mbox{}\par%
+      \vspace{-\baselineskip}%%
+      \noindent
+      {\vbox to 2.43\Cvs{\vfill%
+        #6{\@hangfrom{\hskip #3\relax\@svsec}%
+          \interlinepenalty \@M {#8}\@@par}%
+        \vfill}%
+       }\@@par%
+      \endgroup
+    \fi
+    \par\prevdepth=-1000pt%
+    \csname #1mark\endcsname{#7}%
+    \addcontentsline{toc}{#1}{%
+      \ifnum #2>\c@secnumdepth \else%
+        \protect\numberline{\csname the#1\endcsname}\hskip1\zw%
+      \fi%
+      {#7}}%
+  \else
+    \def\@svsechd{%
+      #6{\hskip #3\relax
+      \@svsec #8}%
+      \csname #1mark\endcsname{#7}%
+      \addcontentsline{toc}{#1}{%
+        \ifnum #2>\c@secnumdepth \else%
+         \protect\numberline{\csname the#1\endcsname}%
+        \fi%
+        #7}}%
+  \fi
+  \@xsect{#5}}
+\fi
+
+\def\@xsect#1{%
+  \@tempskipa #1\relax
+  \ifdim \@tempskipa>\z@
+    \par \nobreak
+    \vskip \@tempskipa
+    \@afterheading
+  \else
+    \@nobreakfalse
+    \global\@noskipsectrue
+    \everypar{%
+      \if@noskipsec
+        \global\@noskipsecfalse
+       {\setbox\z@\lastbox}%
+        \clubpenalty\z@
+        \begingroup \@svsechd \endgroup
+        \unskip
+        \@tempskipa #1\relax
+        \hskip -\@tempskipa
+      \else
+        \clubpenalty \@clubpenalty
+        \everypar{}%
+      \fi}%
+  \fi
+  \ignorespaces}
+
+\def\@ssectA#1#2#3#4#5{%
+  \@tempskipa #3\relax
+  \ifdim \@tempskipa>\z@
+    \begingroup
+    \mbox{}\par%
+    \vspace{-\baselineskip}%%
+    \addvspace{.5\Cvs}%
+    \noindent%
+    #4{%
+      \@hangfrom{\hskip #1}%
+        \interlinepenalty \@M #5\@@par}%
+    \addvspace{.5\Cvs}%
+    \endgroup
+  \else
+    \def\@svsechd{#4{\hskip #1\relax #5}}%
+  \fi
+  \@xsect{#3}}
+
+%% Inside \appendix, a starred \section* (used once, internally, for
+%% the "付録"/"Appendix" banner) reverts to the kernel's plain \@ssect
+%% instead of \@ssectA: the original swaps in \@startsectionAPP there,
+%% whose starred branch calls \@ssectC (itself equivalent to the
+%% kernel's \@ssect, see CLAUDE.md Sec.4.17) rather than its own
+%% \@sectA-style mechanism. Its non-starred branch (\@sectAPP in the
+%% original) is otherwise byte-for-byte identical to \@sectA, so it is
+%% reused here rather than duplicated.
+\def\@startsectionAPP#1#2#3#4#5#6{%
+  \if@noskipsec \leavevmode \fi
+  \par
+  \@tempskipa #4\relax
+  \@afterindenttrue
+  \ifdim \@tempskipa <\z@
+    \@tempskipa -\@tempskipa \@afterindentfalse
+  \fi
+  \if@nobreak
+    \everypar{}%
+  \else
+    \addpenalty\@secpenalty\addvspace\@tempskipa
+  \fi
+  \@ifstar
+    {\@ssect{#3}{#4}{#5}{#6}}%
+    {\@dblarg{\@sectA{#1}{#2}{#3}{#4}{#5}{#6}}}}
+
+\renewcommand{\section}{\@startsectionA{section}{1}{\z@}%
+  {.00001\Cvs}{.00001\Cvs}%
   {\reset@font\fontsize{16\JQ}{21\h}\gtfamily\bfseries\mathversion{bold}\selectfont}}
 \renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
   {\Cvs}{.00001\Cvs}%
   {\reset@font\normalsize\gtfamily\bfseries\mathversion{bold}\selectfont}}
 \renewcommand{\subsubsection}{\@startsection{subsubsection}{3}{\z@}%
-  {.5\Cvs}{.00001\Cvs}%
+  {0.00001\Cvs}{0.00001\Cvs}%
   {\reset@font\normalsize\gtfamily\bfseries\mathversion{bold}\selectfont}}
-\renewcommand{\paragraph}{\@startsection{paragraph}{4}{\z@}%
-  {.5\Cvs}{.00001\Cvs}%
+\renewcommand{\paragraph}{\@startsection{paragraph}{3}{\z@}%
+  {0.00001\Cvs}{0.00001\Cvs}%
   {\reset@font\normalsize\gtfamily\bfseries\selectfont}}
-\renewcommand{\subparagraph}{\@startsection{subparagraph}{5}{\z@}%
-  {.5\Cvs}{.00001\Cvs}%
+\renewcommand{\subparagraph}{\@startsection{subparagraph}{3}{\z@}%
+  {0.00001\Cvs}{0.00001\Cvs}%
   {\reset@font\normalsize\gtfamily\bfseries\selectfont}}
 
 \renewcommand\appendixname{\ifDS@english Appendix\else\kintou{5\zw}{付録}\fi}
@@ -1199,6 +1611,9 @@
   \renewcommand\theequation{A.\@arabic\c@equation}
   \renewcommand\thefigure{A$\cdot$\@arabic\c@figure}
   \renewcommand\thetable{A$\cdot$\@arabic\c@table}
+  \renewcommand{\section}{\@startsectionAPP{section}{1}{\z@}%
+    {.00001\Cvs}{.00001\Cvs}%
+    {\reset@font\fontsize{16\JQ}{21\h}\gtfamily\bfseries\mathversion{bold}\selectfont}}%
   \section*{\appendixname}}
 
 %% =================================================================
@@ -1220,16 +1635,24 @@
 \newdimen\twocolecapwidth \twocolecapwidth=.66\textwidth
 \def\TABLE{table}
 
+%% Inside figure/table, \center is redirected to this \trivlist-based
+%% version (rigid, no plus/minus stretch), not the kernel's \list-based
+%% center environment, matching the original's \@floatenv.
+\def\Center{\topsep\z@\parsep\z@\partopsep\z@\itemsep\z@
+  \trivlist\centering\item\relax}
+\def\endCenter{\endtrivlist}
+\def\@floatenv{\let\center\Center}
+
 \renewcommand{\thefigure}{\@arabic\c@figure}
 \def\fps@figure{tbp}\def\ftype@figure{1}\def\ext@figure{lof}
 \def\fnum@figure{\figurename~\thefigure}
 \def\fnum@efigure{Fig.~\thefigure}
 \renewenvironment{figure}
-  {\capwidth\hsize\ecapwidth\hsize
+  {\@floatenv\capwidth\hsize\ecapwidth\hsize
    \abovecaptionskip1mm\belowcaptionskip\z@\@float{figure}}
   {\end@float}
 \renewenvironment{figure*}
-  {\capwidth.66\textwidth\ecapwidth.66\textwidth
+  {\@floatenv\capwidth.66\textwidth\ecapwidth.66\textwidth
    \abovecaptionskip1mm\belowcaptionskip\z@\@dblfloat{figure}}
   {\end@dblfloat}
 
@@ -1238,11 +1661,11 @@
 \def\fnum@table{\tablename~\thetable}
 \def\fnum@etable{Table~\thetable}
 \renewenvironment{table}
-  {\capwidth\hsize\ecapwidth\hsize
+  {\@floatenv\capwidth\hsize\ecapwidth\hsize
    \abovecaptionskip\z@\belowcaptionskip1mm\@float{table}}
   {\end@float}
 \renewenvironment{table*}
-  {\capwidth.66\textwidth\ecapwidth.66\textwidth
+  {\@floatenv\capwidth.66\textwidth\ecapwidth.66\textwidth
    \abovecaptionskip\z@\belowcaptionskip1mm\@dblfloat{table}}
   {\end@dblfloat}
 
@@ -1591,6 +2014,131 @@
 \let\@openbib@code\@empty
 \let\Cite\cite
 
+%% \cite{a,b,c} sorts and deduplicates the citation numbers (e.g.
+%% \cite{ref5,ref1,ref3} prints "[1, 3, 5]", not "[5, 1, 3]"), unlike
+%% the kernel's plain \@citex/\@cite, which preserve typed order. This
+%% replaces those two kernel macros and the plain-TeX sorted-list
+%% utility macros they're built on; engine-agnostic, ported verbatim.
+\def\@cite@itemsep{,\penalty\@m\ }
+\def\@cite@firstdelim{}
+\def\@cite@lastdelim{}
+\def\@cite#1#2{%
+   \ifvmode\leavevmode\fi\nobreak
+   \if@tempswa\@cite@without@comment{#1}{#2}%
+   \else      \@cite@with@comment{#1}%
+   \fi}
+\def\@cite@without@comment#1#2{%
+   \@cite@firstdelim{#1, #2}\@cite@lastdelim}%
+\def\@cite@with@comment#1{%
+   \@cite@firstdelim{#1}\@cite@lastdelim}
+\def\@citex[#1]#2{%
+   \let\@cite@reference@list\@empty
+   \let\@cite@undefined@reference\@empty
+   \@for\@tempa:=#2\do{%
+      \edef\@tempa{\expandafter\@firstofone\@tempa\@empty}%
+      \if@filesw
+         \immediate\write\@auxout{\string\citation{\@tempa}}%
+      \fi
+      \@ifundefined{b@\@tempa}%
+      {\G@refundefinedtrue
+          \@latex@warning{Citation `\@tempa' on page
+          \thepage \space undefined}%
+       \def\@cite@undefined@reference{%
+           \@cite@put@itemsep
+            \mbox{\reset@font\bfseries ?}}}%
+       {\edef\@tempb{{\@nameuse{b@\@tempa}}}%
+        \expandafter\@append@list\expandafter
+           \@cite@reference@list\@tempb}}%
+       \@simplify@list\@cite@reference@list
+       \@ascending@sort@list\@cite@reference@list\@compare@num
+       \@cite{{\let\@elt\@cite@output@elt
+               \def\@cite@put@itemsep{%
+                  \def\@cite@put@itemsep{\@cite@itemsep}}%
+                \@cite@reference@list
+                \@cite@undefined@reference}}%
+        {#1}}%
+\def\@cite@output@elt#1{%
+    \@cite@put@itemsep
+    \bgroup[#1]\egroup}
+\def\@append@list#1#2{\@addto@macro#1{\@elt{#2}}}%
+\def\@addto@macro#1#2{\expandafter\def\expandafter#1\expandafter{#1#2}}
+\def\@simplify@list#1{%
+   \begingroup
+      \let\@templist\@empty
+      \loop\ifx#1\@empty\else
+         \@pop@list\@firstterm#1%
+         \expandafter\@append@list\expandafter\@templist
+             \expandafter{\@firstterm}%
+         \expandafter\@remove@from@list\expandafter#1%
+             \expandafter{\@firstterm}%
+      \repeat
+      \expandafter\endgroup\expandafter
+         \def\expandafter#1\expandafter{\@templist}}
+\def\@remove@from@list#1#2{%
+    \begingroup
+    \let\@templist\@empty
+    \def\@to@be@removed{#2}%
+    \let\@elt\@remove@from@list@elt
+     #1%
+    \expandafter\endgroup\expandafter
+      \def\expandafter#1\expandafter{\@templist}}
+\def\@remove@from@list@elt#1{%
+   \def\@tempa{#1}%
+   \ifx\@tempa\@to@be@removed\else
+      \@append@list\@templist{#1}%
+   \fi}%
+\def\@pop@list#1#2{%
+   \ifx#2\@empty\let#1\@empty
+   \else        \expandafter\@pop@list@#2\@nil#1#2%
+   \fi}
+\def\@pop@list@\@elt#1#2\@nil#3#4{\def#3{#1}\def#4{#2}}
+\newcount\@compare@result
+\def\@compare@num#1#2{%
+    \@compare@result#1\relax
+    \advance\@compare@result-#2\relax}
+\def\@ascending@sort@list{\@sort@list<}
+\def\@descending@sort@list{\@sort@list>}
+\def\@sort@list#1#2#3{%
+   \begingroup
+   \let\@sort@templista\@empty
+   \def\@elt##1{%
+      \@addto@sorted@list#1\@sort@templista{#3}{##1}}%
+   #2%
+   \expandafter\endgroup\expandafter
+      \def\expandafter#2\expandafter{\@sort@templista}}
+\newif\if@ignore@same@item
+\def\@addto@sorted@list#1#2#3#4{%
+    \begingroup
+    \let\@sort@templistb\@empty
+    \def\@tempz{\@elt{#4}}%
+    \def\@elt##1{%
+        #3{##1}{#4}%
+        \def\@tempa{\@elt{##1}}%
+        \let\@tempb\@empty
+        \ifnum\z@#1\@compare@result
+           \@csc@t\@tempa\@tempz\@tempa
+           \def\@tempb{\@addto@sorted@list@skip}%
+        \else
+            \ifnum\z@=\@compare@result
+                \if@ignore@same@item
+                     \def\@tempb{\@addto@sorted@list@skip}%
+                \fi
+            \fi
+        \fi
+        \@csc@t\@sort@templistb\@sort@templistb\@tempa
+        \@tempb}%
+     #2\@addto@sorted@list@{\@elt{#4}}%
+     \expandafter\endgroup\expandafter
+         \def\expandafter#2\expandafter{\@sort@templistb}}%
+\def\@addto@sorted@list@skip#1\@addto@sorted@list@#2{%
+    \@addto@sorted@list@{#1}}
+\def\@addto@sorted@list@#1{\@addto@macro\@sort@templistb{#1}}
+\def\@csc@t#1#2#3{%
+   \expandafter\expandafter\expandafter\def
+   \expandafter\expandafter\expandafter#1%
+   \expandafter\expandafter\expandafter{%
+   \expandafter#2#3}}
+
 %% =================================================================
 %% 17. Footnotes
 %% =================================================================
@@ -1605,6 +2153,13 @@
 \fi
 
 \def\thefootnote{\ifnum\c@footnote>\z@\leavevmode\lower.5ex\hbox{*}\@arabic\c@footnote\fi}
+
+%% In Japanese mode \footnotemark suppresses the small Japanese/Latin
+%% inter-character glue before the mark, for a tighter look.
+\let\ipsj@footnotemark\footnotemark
+\ifDS@english\else
+  \def\footnotemark{\inhibitglue\ipsj@footnotemark}
+\fi
 
 \def\footfont{\ifDS@english
     \fontsize{11\Q}{13\h}\normalfont\selectfont
@@ -1708,7 +2263,7 @@
     \hangindent30mm\hangafter-7\relax
     \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#3}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#2}%
-    \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
+    \hangindent30mm{\normalsize\inhibitglue\@@member}\\[.5\Cvs]
     \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#4\@title@member}%
   \end{minipage}}%
   \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
@@ -1723,7 +2278,7 @@
     \hangindent30mm\hangafter-7\relax
     \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#1}%
-    \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
+    \hangindent30mm{\normalsize\inhibitglue\@@member}\\[.5\Cvs]
     \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
   \end{minipage}}%
   \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
@@ -1732,13 +2287,16 @@
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#1}%
-    {\normalsize\@@member}\\[.5\Cvs]
+    {\normalsize\inhibitglue\@@member}\\[.5\Cvs]
     \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
   \end{minipage}}%
   \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \fi
 \fi
-\let\inhibitglue\relax
+%% \inhibitglue above is luatexja-core's own command (loaded in Sec.2);
+%% it must not be redefined to \relax here, or the calls above
+%% (suppressing the Japanese/Latin inter-character glue before the
+%% membership-type parenthetical) go silently inert.
 \def\@@member{}
 \def\@title@member{}
 %% #1 = comma-separated membership codes (see \h@member etc. above).
@@ -1778,5 +2336,50 @@
     }%
   }
 \fi
+
+%% =================================================================
+%% 20. Miscellaneous utility macros
+%% =================================================================
+
+%% \ruby{base}{furigana}: small reading text stacked above the base
+%% text, both centered to whichever is wider.
+\def\ruby#1#2{\leavevmode\setbox0=\hbox{#1}\setbox1=\hbox{\tiny#2}%
+  \ifdim\wd0>\wd1 \dimen0=\wd0\else\dimen0=\wd1\fi
+  \hbox{\ltjsetparameter{kanjiskip={0pt plus 1fill minus 1fill}}%
+    \vbox{\hbox to\dimen0{\tiny\hfil#2\hfil}%
+      \nointerlineskip\hbox to\dimen0{\hfil#1\hfil}}}}
+
+%% End-of-proof marker ("\Box" flush right at the end of a proof).
+\def\QED{{\unskip\nobreak\hfil\penalty50
+  \hskip1\zw\hbox{}\nobreak\hfil\hbox{$\Box$\hskip1\zw}
+  \parfillskip\z@\finalhyphendemerits\z@\par}}
+
+%% \MARU{n}: the digit(s) n set inside a circle (e.g. circled footnote
+%% markers); two-digit numbers are squeezed horizontally to fit.
+\def\MARU#1{\raisebox{0.1zh}{{\rm
+  \ooalign{\hfil\lower.168ex\hbox{\ifnum#1<10\relax{#1}\else\scalebox{.5}[1]{#1}\fi}%
+    \hfil\crcr\mathhexbox20D}}}}
+
+%% \contact{...}: accepted for backward compatibility with old
+%% manuscripts; intentionally renders nothing (matches the original).
+\long\def\contact#1{}
+
+%% Thicker (0.4mm) table rule, for use inside tabular via \noalign.
+\def\Hline{\noalign{\hrule height0.4mm}}
+
+%% Double-em-dash mark (e.g. "same author as above" in a bibliography).
+\ifDS@english
+  \def\ddash{\leavevmode\raise.1mm\hbox to1.95em{\hfil---\hss---\hfil}}
+\else
+  \def\ddash{\leavevmode\raise.1zh\hbox to2\zw{---\hss---}}
+\fi
+\let\doubledash\ddash
+
+%% Reserve blank vertical space for a figure to be physically pasted in
+%% later (a holdover from camera-ready paste-up manuscript prep).
+\def\dummyfigure#1{\begin{figure}[b]\vspace{#1}\vskip\abovecaptionskip
+  \phantom{\box\@dummyfigbox}\par\end{figure}}
+\def\dummyfiguret#1{\begin{figure}[t]\vspace{#1}\vskip\abovecaptionskip
+  \phantom{\box\@dummyfigbox}\par\end{figure}}
 
 \endinput

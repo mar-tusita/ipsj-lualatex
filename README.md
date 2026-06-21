@@ -103,7 +103,9 @@ lualatex main.tex
 | `OT` | （廃止） | 同上 |
 | `a4paper` 等の用紙オプション全般 | （廃止） | 上記4節参照。常にA4 |
 
-それ以外のオプション（`techrep`, `submit`, `noauthor`, `english`, `preface`, `preprint`, `draft`, `final`, `tate`, `oneside`/`twoside`, `onecolumn`/`twocolumn`, `leqno`, `fleqn`, `openbib`, 各論文誌略称 `PRO`/`ACS`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`JIP`/`TCE`、各論文種別 `technote`/`sigrecommended`/`invited`/`Data`/`Survey`/`Research`/`Short`/`systems`/`services`/`devices`/`Express`/`Practice`/`Content`/`system`/`abstract`/`invitedshort`/`recommendedshort`/`recommendedresearch`/`recommendedpractice`/`recommendedcontent`/`recommendeddevices`）は**そのまま同じ名前で使えます**。
+それ以外のオプション（`techrep`, `submit`, `noauthor`, `english`, `preface`, `preprint`, `draft`, `final`, `tate`, `oneside`/`twoside`, `onecolumn`/`twocolumn`, `leqno`, `fleqn`, `openbib`, 各論文誌略称 `PRO`/`ACS`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`JIP`/`TCE`、各論文種別 `technote`/`sigrecommended`/`invited`/`Data`/`Survey`/`Research`/`Short`/`systems`/`services`/`devices`/`Express`/`Practice`/`Content`/`system`/`abstract`/`invitedshort`/`recommendedshort`/`recommendedresearch`/`recommendedpractice`/`recommendedcontent`/`recommendeddevices`）は**そのまま同じ名前で使えます**。`fleqn`は数式が常にフラッシュレフトになる原文の挙動が既定で常時有効なため、指定しても無効果です（警告を出さないために受理だけします）。
+
+`preface`（序文）モードでは、`ipsjpref.sty`由来の`alone`オプションも使えます。序文が単独で1ページに収まる場合に指定すると、ヘッダのページ参照が「先頭ページ–末尾ページ」の範囲表記ではなく単一ページ表記になります。
 
 `ses`（IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム向け。研究報告スタイルがベースで、ヘッダの学会名表記・DOI行・footerの著作権表記・ページ番号をすべて非表示にする）にも対応しています。`ses` を指定すると自動的に `techrep` 相当の組版になるため、`\documentclass[submit,ses,noauthor]{ipsj-lualatex}` のように `techrep` を併記する必要はありません（オリジナルの `ses.sty` と同じ挙動です）。
 
@@ -182,6 +184,7 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 ## 既知の制限
 
 - 全ての論文誌種別オプション（`ACS`/`PRO`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`TCE`）のヘッダ文字列・DOI表記・年度算出式は移植していますが、個別に組版確認をしたのは `techrep` と `JIP` のみです。
-- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境および`enumerate`/`itemize`/`description`本体は全テスト文書で使用されており、原文と画素単位で一致することを確認済みです）。
+- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境および`enumerate`/`itemize`/`description`本体は全テスト文書で使用されており、原文と画素単位で一致することを確認済みです）。
+- `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、原文との画素単位の比較による検証はできていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
 
 詳細な技術的決定の根拠・移植作業の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
