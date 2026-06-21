@@ -158,7 +158,15 @@
 
 \setmainfont{TeX Gyre Termes}
 \setsansfont{TeX Gyre Heros}
-\setmainjfont{Harano Aji Mincho}
+%% The original's Mincho has no genuine bold shape (see CLAUDE.md): NFSS
+%% there falls back to Gothic whenever \bfseries is requested on Mincho
+%% text. Harano Aji Mincho ships a real Bold weight, so without this
+%% override \bfseries/\textbf on Japanese text would render in bold
+%% Mincho instead, which looks wrong for any user-authored \textbf{...}
+%% that isn't covered by the class's own \gtfamily\bfseries call sites.
+%% Declaring Gothic as Mincho's BoldFont replicates the original
+%% substitution globally, for every \bfseries+Mincho combination.
+\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic}]
 \setsansjfont{Harano Aji Gothic}
 \renewcommand{\kanjifamilydefault}{\mcdefault}
 
@@ -265,6 +273,7 @@
     \@setfontsize\normalsize{9.25pt}{12.80592pt}%
   \else
     \@setfontsize\normalsize{13\JQ}{21\h}%
+    \ltjsetparameter{kanjiskip={0pt plus .1\zw minus .05\zw}}%
   \fi
   \abovedisplayskip 9\p@ \@plus 3\p@ \@minus 4\p@
   \abovedisplayshortskip \z@ \@plus 2.5\p@
@@ -283,6 +292,7 @@
     \@setfontsize\small{8.53728pt}{9.960159pt}%
   \else
     \@setfontsize\small{12\JQ}{20\h}%
+    \ltjsetparameter{kanjiskip={0pt plus .1\zw minus .05\zw}}%
   \fi
   \abovedisplayskip 6\p@ \@plus2\p@ \@minus4\p@
   \abovedisplayshortskip \z@ \@plus\p@
@@ -298,6 +308,7 @@
     \@setfontsize\footnotesize{7.82584pt}{9.24872pt}%
   \else
     \@setfontsize\footnotesize{11\JQ}{18\h}%
+    \ltjsetparameter{kanjiskip={0pt plus .1\zw minus .05\zw}}%
   \fi
   \abovedisplayskip 5\p@ \@plus 1.5\p@ \@minus 3\p@
   \abovedisplayshortskip \z@ \@plus\p@
@@ -336,6 +347,19 @@
 \setlength\intextsep   {1\Cvs \@plus .75\Cvs \@minus .25\Cvs}
 \setlength\dblfloatsep    {12\p@ \@plus 2\p@ \@minus 2\p@}
 \setlength\dbltextfloatsep{20\p@ \@plus 2\p@ \@minus 4\p@}
+
+%% The kernel's default topnumber/bottomnumber/totalnumber (2/1/3) cap how
+%% many floats may stack at the top/bottom of a single column, regardless
+%% of \topfraction etc. having room. With 3+ floats placed close together
+%% in a row (\begin{figure}[tb] with little or no intervening text), this
+%% kernel default silently bumps the 3rd+ float from "top" to "bottom"
+%% placement (or to a later page) well before the fraction limits below
+%% ever come into play, which displaced a figure relative to a footnote
+%% built from the original's intended top-stacking.
+\setcounter{topnumber}{8}
+\setcounter{bottomnumber}{8}
+\setcounter{totalnumber}{16}
+\setcounter{dbltopnumber}{2}
 
 \def\topfraction{1}
 \def\bottomfraction{1}
@@ -1277,7 +1301,10 @@
       \hskip12\JQ{\HeadfontE{\pageref{ipsj@firstpage}--\pageref{ipsj@lastpage}}}\ %
       \HeadfontE{(\@monthyear)}%
     \fi}%
-    \smash{\raisebox{-6mm}{\rlap{\DOIHeadfont\ipsj@doi}}}%
+    %% Unlike \ps@IPSJTITLEheadings (title page), the original only
+    %% keeps an empty \DOIHeadfont box here on continuation pages --
+    %% it never repeats the actual [DOI: ...] text past page 1.
+    \smash{\raisebox{-6mm}{\rlap{\DOIHeadfont}}}%
     \hfil\@Rtop}%
   \let\@evenhead\@oddhead
   \def\@oddfoot{\@Lbot\rlap{\bothashira
@@ -1643,6 +1670,18 @@
 \def\endCenter{\endtrivlist}
 \def\@floatenv{\let\center\Center}
 
+%% The kernel's \@floatboxreset (called by \@float/\@dblfloat at the start
+%% of every figure/table) does not change the font size; the original
+%% overrides it to switch all float content to \footnotesize. Without this,
+%% float content inherits \normalsize from the surrounding text, which is
+%% wide enough to make tables overflow \hsize/\textwidth (observed with
+%% \tabular content that fits only at \footnotesize).
+\def\@floatboxreset{%
+  \reset@font
+  \footnotesize\baselineskip16\h
+  \@setminipage
+}
+
 \renewcommand{\thefigure}{\@arabic\c@figure}
 \def\fps@figure{tbp}\def\ftype@figure{1}\def\ext@figure{lof}
 \def\fnum@figure{\figurename~\thefigure}
@@ -1694,7 +1733,7 @@
   \setbox\ipsj@boxa\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw{#2}}%
   \setbox\ipsj@boxb\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw}%
   \ifdim\wd\ipsj@boxa>\capwidth
-    \parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
+    \hfil\parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
       {\ipsj@boldlabel#1}\hskip1\zw#2}\par
   \else
     \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
