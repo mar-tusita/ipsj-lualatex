@@ -313,7 +313,7 @@
 1. 本来の`\@uketsuke`/`\@euketsuke`（`\@received`/`\@rereceived`/`\@rerereceived`/`\@accepted`/`\@released`、英文では`\@ereceived`等を組み合わせて表示する版）を、`\received`/`\accepted`等の定義の直後（techrepの`\ifDS@techrep`分岐より前）に追加した。
 2. 既定モードの`\authortitle`（和文・英文の両方）に、著者欄の直後・概要欄の直前へ`{\juketukefont{\@uketsuke}\par}`（英文は`{\Enguketukefont{\@uketsuke}\par}`）、英文著者欄がある場合はその直後にも`{\euketukefont{\@euketsuke}\par}`の呼び出しを追加した。フォントマクロ（`\juketukefont`等）とスキップ量（`\Jauthorjreceivesep`等）は元から定義済みで使われていなかっただけだったため、呼び出しを追加するだけで済んだ。
 
-修正後、`jsample-lualatex.pdf`は10ページ（原文と完全一致）、`esample-lualatex.pdf`は8ページ（変化なし、原文と完全一致）になり、受付・採録日が画素単位で原文と一致する形で表示されることを確認した。`techrep`モード（`main-lualatex.tex`/`tech-jsample-lualatex.tex`）は元から`\phantom`版を使うため影響なし。
+修正後、`jsample-lualatex.pdf`は10ページ（原文と完全一致）、`esample-lualatex.pdf`は8ページ（変化なし、原文と完全一致）になり、受付・採録日が画素単位で原文と一致する形で表示されることを確認した。`techrep`モード（`tech-jsample-lualatex.tex`）は元から`\phantom`版を使うため影響なし。
 
 **教訓**：「`techrep`モードでは日付を隠す」という仕様だけに着目してphantom版の移植を優先し、**それより基本的な「既定モードでは日付を実際に表示する」という土台の実装を見落とした**。同じマクロ名（`\@uketsuke`）が複数モードで意味の異なる定義を持つ場合、各モードの`\authortitle`を1つずつ独立に全文比較する必要があり、「techrep版が動いているから大丈夫」という確認だけでは既定モードの欠落に気づけない。
 
@@ -337,7 +337,7 @@
 - `\newtheorem`をカーネルの既定動作から完全に差し替え（`\@ifstar`で分岐し、`\theo@it`/`\theo@sp`を経由して`\DESCRIPTION`リストで定理見出しを組む。英文モードでは定理番号がイタリックになる）。
 - `recommendation`環境（SLDM等の「推薦文」）を追加。
 
-修正後、`jsample-lualatex.pdf`の2.1節は`(1)`〜`(11)`の番号付きリストとして原文と画素単位で一致し、`quote`環境（URL表示など、`jsample`/`esample`/`tech-jsample`/`main`/`ses-sample`/`ses-esample`で多用）を含むページも完全一致を確認した。`quotation`/`verse`/`\newtheorem`/`recommendation`は今回のテスト文書群では実際に使用されていないため出力比較はできていないが、原文のコードをそのまま移植してあるため、構造的には同一の挙動になるはずである。
+修正後、`jsample-lualatex.pdf`の2.1節は`(1)`〜`(11)`の番号付きリストとして原文と画素単位で一致し、`quote`環境（URL表示など、`jsample`/`esample`/`tech-jsample`/`ses-sample`/`ses-esample`で多用）を含むページも完全一致を確認した。`quotation`/`verse`/`\newtheorem`/`recommendation`は今回のテスト文書群では実際に使用されていないため出力比較はできていないが、原文のコードをそのまま移植してあるため、構造的には同一の挙動になるはずである。
 
 **教訓**：「`X`を`Y`の別名にする」という簡略化を行う際は、**`Y`自体が標準から変更されていないかを必ず確認する**こと。`\Enumerate`が`enumerate`の単純な別名で済むという判断は、暗黙に「`enumerate`自体は標準のまま」という前提に依存していたが、実際には原文がその前提も崩していた。「大文字版だけ特別」という思い込みで調査を打ち切らず、関連する全レベルの定義を原文から再確認する必要がある。
 
@@ -439,7 +439,7 @@
 
 **検証方法**：`pdfcrop`で原文・新版の同一領域を同一スケールに切り出し、見出し下の空白・「付　　　録」の文字間隔を直接比較した。また`gs`でページごとにPNG化して目視確認した。
 
-**結果**：修正後、`jsample-lualatex.pdf`は10ページ→9ページに変化したが、これは§6.2に既出の「フォントメトリクス差による1ページ程度のズレ」と同種の非構造的な差であり（最終ページの著者紹介が1件繰り越されるのみで、空白の異常等は無いことを確認済み）、見出し前後の空白自体は原文と画素単位で一致するようになった。`esample-lualatex.pdf`は9ページ→8ページに変化し、**§4.16で「原因不明だが許容範囲内」としていた1ページ差が完全に解消し、原文と完全一致するようになった**。すなわち、§4.16時点での差は太字明朝/ゴシック修正そのものが原因ではなく、本節で発見した`\section`見出し機構の欠落が真因だったことになる。他のテスト文書（`tech-jsample`/`main`/`ses-sample`/`ses-esample`）のページ数はこの修正で変化していない。
+**結果**：修正後、`jsample-lualatex.pdf`は10ページ→9ページに変化したが、これは§6.2に既出の「フォントメトリクス差による1ページ程度のズレ」と同種の非構造的な差であり（最終ページの著者紹介が1件繰り越されるのみで、空白の異常等は無いことを確認済み）、見出し前後の空白自体は原文と画素単位で一致するようになった。`esample-lualatex.pdf`は9ページ→8ページに変化し、**§4.16で「原因不明だが許容範囲内」としていた1ページ差が完全に解消し、原文と完全一致するようになった**。すなわち、§4.16時点での差は太字明朝/ゴシック修正そのものが原因ではなく、本節で発見した`\section`見出し機構の欠落が真因だったことになる。他のテスト文書（`tech-jsample`/`ses-sample`/`ses-esample`）のページ数はこの修正で変化していない。
 
 **教訓**：「前後スキップの値さえ原文と同じにすれば見出しの空白は再現できる」という前提は、`\@startsection`モデル（前後スキップ＋見出し本文）が常に成り立つという暗黙の仮定に基づいていたが、`ipsj.cls`の`\section`はそのモデル自体を採用していなかった。値だけを転記して「だいたい合っていそう」に見えるコードは、根本のレイアウトモデルそのものが違うケースを覆い隠してしまう。また、ある文書（`esample`）で原因不明のまま受け入れた1ページ差が、実は別の文書（`jsample`）の不具合修正によって解消されることがある——「許容範囲内のドリフト」と判断する前に、関連する他の変更を先に検討する余地がないか振り返る価値がある。
 
@@ -462,13 +462,13 @@
 
 **調査方法**：PowerShellの正規表現で`\def`/`\newcommand`/`\renewcommand`/`\newenvironment`/`\renewenvironment`のパターンを抽出し名前リスト化、`Compare-Object`相当の集合差分で「原文にあって移植先に無い」名前を抽出した。この機械的な差分は`\ipsj@`改名や`article.cls`提供で不要になった項目を多数含む偽陽性を生んだため、1件ごとに`grep`で文脈を読み、本当に必要かどうかを判定した。この方法は**名前が一致しているが内容が簡略化されているケース**（§4.17の`\section`がまさにこれ）を検出できないため、名前ベースの差分は出発点に過ぎず、本節の各項目は結局原文の該当箇所をすべて目視で読み直して確認した。
 
-**結果**：6つのテスト文書（`jsample`/`esample`/`tech-jsample`/`main`/`ses-sample`/`ses-esample`）すべてが2回パスでエラーなくコンパイルでき、ページ数は本節の修正前後で変化していない（9/8/6/8/6/8、§6.2参照）。`esample-lualatex.pdf`のヘッダは「No.1」の誤表示と「2017年」の誤表示の両方が解消し、原文と完全に一致するようになった。
+**結果**：5つのテスト文書（`jsample`/`esample`/`tech-jsample`/`ses-sample`/`ses-esample`）すべてが2回パスでエラーなくコンパイルでき、ページ数は本節の修正前後で変化していない（9/8/6/6/8、§6.2参照）。`esample-lualatex.pdf`のヘッダは「No.1」の誤表示と「2017年」の誤表示の両方が解消し、原文と完全に一致するようになった。
 
 **教訓**：これまでの不具合修正は「ユーザーが視認した症状から原因を逆引きする」という反応的な進め方だったが、今回は「原文を冒頭から終端まで全部読み、移植先と1つずつ突き合わせる」という網羅的な進め方に切り替えたことで、これまで一度も視認されていなかった実害のあるバグ（fleqn数式、ヘッダの号数表示、既定年の算出）が複数見つかった。これらは小さな文書や視認上目立たない箇所に隠れていたため、症状ベースの検査では発見されなかったと考えられる。「テスト文書群が全てパスしているから移植は完了している」という判断は、テスト文書群が原文の機能の一部しか使っていない場合には正しくない。
 
-## 5. 当初の `main.tex` 検証では見つからなかった機能（後で追加したもの）
+## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
-最初に用意したテスト文書 `main-lualatex.tex`（`main.tex` を移植、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
+最初に用意したテスト文書（ユーザー提供の実論文1件を移植したもの、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
 
 - `\figref`/`\Figref`/`\figsref`/`\Figsref`/`\tabref`/`\Tabref`/`\tabsref`/`\Tabsref`：図表参照。同じラベルへの**最初の参照だけ太字**になり、2回目以降は通常体になる仕様（`\@ifundefined{ipsj@used@<label>}` で初回判定）。
 - `\Editor`／`\Ediname` テーブル（TOD/TBIO/CVA/SLDM固有の「担当編集委員」「Communicated by」表記）。
@@ -490,7 +490,7 @@
 # Git Bash で実行する場合、-w /workdir のパスがMSYSに書き換えられてしまうため
 # MSYS_NO_PATHCONV=1 を必ず付ける
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd)":/workdir -w /workdir \
-  texlive/texlive:latest lualatex -interaction=nonstopmode -halt-on-error main-lualatex.tex
+  texlive/texlive:latest lualatex -interaction=nonstopmode -halt-on-error jsample-lualatex.tex
 ```
 
 フォントの存在確認は `fc-list` で行った：
@@ -517,7 +517,6 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 
 | テスト文書 | 元ファイル | モード | 新/元のページ数 | 結果 |
 |---|---|---|---|---|
-| `main-lualatex.tex` | `main.tex`（実論文） | `submit,techrep,noauthor` | 8 / 8 | ほぼ画素単位で一致 |
 | `tech-jsample-lualatex.tex` | `tech-jsample.tex`（公式サンプル） | `submit,techrep,noauthor` | 6 / 6 | ほぼ画素単位で一致 |
 | `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 9 / 10 | 構造は一致、1ページ差（§4.14, §4.17参照） |
 | `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 8 / 8 | 完全一致（§4.17参照） |
@@ -654,7 +653,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`tombow` のオフセット調整**：トンボの位置（紙端からの距離）は10mm固定。原文にあった `\@tombowwidth` 相当のカスタマイズ余地は設けていない。
 - **序文（`preface`）モード**：§4.18 finding 10で`\authortitle`/`\ps@IPSJTITLEheadings`/`alone`オプション/論文種別ラベル非表示を実装したが、対応する`ipsjpref.sty`版の参照PDFが手元に無いため、原文との画素単位の比較による検証はできていない。手作りの最小限のテスト文書（`\documentclass[preface,submit]`、`\documentclass[preface,submit,alone]`）でエラー無くコンパイルでき、概要・キーワード無しの簡潔なタイトルページになることのみ確認済み。
 - **`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`\Center`（§4.18 finding 6, 7）**：原文のロジックをそのまま移植したが、テスト文書群のいずれも使用していないため出力比較はできていない。
-- **`\cite`の引用番号ソート（§4.18 finding 1）**：`esample-lualatex.tex`で実際に複数引用（`\cite{companion,latex}`）が使われ正しく動作することを視認したが、並べ替えが必要になる「番号が逆順または不連続な複数引用」のケースは6つのテスト文書のいずれにも無く、ソート自体の動作は未検証。
+- **`\cite`の引用番号ソート（§4.18 finding 1）**：`esample-lualatex.tex`で実際に複数引用（`\cite{companion,latex}`）が使われ正しく動作することを視認したが、並べ替えが必要になる「番号が逆順または不連続な複数引用」のケースは5つのテスト文書のいずれにも無く、ソート自体の動作は未検証。
 
 ## 8. ファイル一覧（このリポジトリにおける位置づけ）
 
@@ -662,8 +661,6 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 |---|---|
 | `ipsj-lualatex.cls` | 本変換の成果物（このドキュメントが説明するクラスファイル） |
 | `ipsj.cls`, `ipsjpref.sty`, `ipsjtech.sty`, `ipsjsort*.bst`, `ipsjunsrt*.bst` | 変換元（pLaTeX用、保持のため残置） |
-| `main.tex` / `main.pdf` | 実論文（pLaTeXでビルド済み）。変換の正解参照として使用 |
-| `main-lualatex.tex` / `main-lualatex.pdf` | `main.tex` を `ipsj-lualatex.cls` 用に移植したもの |
 | `jsample.tex`/`esample.tex`/`tech-jsample.tex` と各PDF | 情報処理学会公式サンプル（pLaTeX用）。追加検証で使用 |
 | `jsample-lualatex.tex`/`esample-lualatex.tex`/`tech-jsample-lualatex.tex` と各PDF | 上記サンプルを `ipsj-lualatex.cls` 用に移植したもの |
 | `ses-sample-lualatex.tex`/`ses-esample-lualatex.tex` と各PDF | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（§6.5参照）。元になったpLaTeX版（`ses-sample.tex`/`ses-esample.tex`/`ses.sty`等）はユーザー提供の一時的な検証資料であり、検証後にこのリポジトリから削除済み |
