@@ -768,6 +768,26 @@
   \let\発表\Presented
 \fi
 
+%% Default (journal) title page: actual received/revised/accepted
+%% dates, shown between the author line and the abstract. techrep
+%% mode overrides these with blank phantoms further below, since
+%% submitted (not yet accepted) technical reports omit real dates.
+\def\@uketsuke{%
+  \@received
+  \@ifundefined{@rereceived}{, }{%
+    \@rereceived
+    \@ifundefined{@rerereceived}{, }{\@rerereceived}%
+    \par}%
+  {\@accepted}%
+  \@ifundefined{@released}{}{, \@released}}
+\def\@euketsuke{%
+  \@ereceived
+  \@ifundefined{@erereceived}{, }{%
+    \@erereceived
+    \@ifundefined{@ererereceived}{, }{\@ererereceived}%
+    \par}%
+  \@eaccepted}
+
 %% Japanese-named aliases of the volume/number/month counters, so that
 %% \setcounter{巻数}{...} etc. (as used by the official sample documents)
 %% directly manipulate \c@volume/\c@number/\c@month.
@@ -871,6 +891,8 @@
   \vskip\Etitleauthorsep
   {\Engeauthorfont\authoroutput{e}\par}%
   \vskip\Eauthorreceivesep
+  {\Enguketukefont{\@uketsuke}\par}%
+  \vskip\Ereceiveabstsep
   \mbox{\box\@abstractbox}\par
   \vskip\Eabstkeywordsep
   \mbox{\box\@ekeywordbox}\par
@@ -880,6 +902,8 @@
   {\jtitlefont{\@title}\par}%
   \vskip\Jtitlejauthorsep
   {\authorfont\authoroutput{}\par}%
+  \vskip\Jauthorjreceivesep
+  {\juketukefont{\@uketsuke}\par}%
   \vskip\Jreceivejabstsep
   \mbox{\box\@abstractbox}\par
   \if@JK
@@ -894,6 +918,7 @@
     \vskip\Jetitleeauthor
     {\eauthorfont\authoroutput{e}\par}%
     \vskip\Jeauthorereceivesep
+    {\euketukefont{\@euketsuke}\par}%
   \fi
   \if@EAB
     \vskip\Jereceiveeabstsep
@@ -1357,6 +1382,16 @@
 \def\refdatee#1{\normalfont(accessed {#1})}
 \def\doi#1{\normalfont DOI: #1}
 
+%% --- Editor's recommendation (SLDM etc.) ------------------------------
+\newenvironment{recommendation}{%
+  \normalsize
+  \par\vskip\baselineskip
+  \ifDS@english
+    \noindent{\bfseries Editor's Recommendation}\par
+  \else
+    \noindent{\bfseries 推薦文}\par
+  \fi}{\par}
+
 %% --- Acknowledgments --------------------------------------------------
 %% \end{acknowledgment} looks up \endacknowledgment via \csname, which
 %% auto-defines it to \relax when absent -- intentionally not defined.
@@ -1364,23 +1399,139 @@
   \ifDS@english{\bfseries Acknowledgments}\hskip1em\ignorespaces%
   \else{\bfseries 謝辞}\hskip1\zw\ignorespaces\fi}
 
+%% --- enumerate / itemize / description: IPSJ label & margin style ----
+%% The original class overrides these directly (not just the
+%% capitalised Enumerate/Itemize/Description variants below): labels
+%% are parenthesised, e.g. "(1)" instead of article.cls's "1.", and the
+%% label column is a fixed 2\Cwd instead of article.cls's narrower,
+%% stretchable defaults.
+\renewcommand{\labelenumi}{(\,\theenumi\,)}
+\renewcommand{\theenumi}{\arabic{enumi}}
+\renewcommand{\labelenumii}{(\,\theenumii\,)}
+\renewcommand{\theenumii}{\alph{enumii}}
+\renewcommand{\p@enumii}{\theenumi}
+\renewcommand{\labelenumiii}{(\,\theenumiii\,)}
+\renewcommand{\theenumiii}{\roman{enumiii}}
+\renewcommand{\p@enumiii}{\theenumi(\theenumii)}
+\renewcommand{\labelenumiv}{(\,\theenumiv\,)}
+\renewcommand{\theenumiv}{\Alph{enumiv}}
+\renewcommand{\p@enumiv}{\p@enumiii\theenumiii}
+
+\renewenvironment{enumerate}{%
+  \ifnum\@enumdepth>3 \@toodeep\else
+    \advance\@enumdepth\@ne
+    \edef\@enumctr{enum\romannumeral\the\@enumdepth}%
+    \list{\csname label\@enumctr\endcsname}{%
+      \usecounter{\@enumctr}\def\makelabel##1{##1\hss}%
+      \leftmargin2\Cwd \labelwidth2\Cwd \labelsep\z@
+      \itemsep\z@\topsep\z@\parsep\z@}%
+  \fi}{\endlist}
+
+\renewcommand{\labelitemi}{$\bullet$}
+\renewcommand{\labelitemii}{\bfseries--}
+\renewcommand{\labelitemiii}{$\ast$}
+\renewcommand{\labelitemiv}{$\cdot$}
+
+\renewenvironment{itemize}{%
+  \ifnum\@itemdepth>3 \@toodeep\else
+    \advance\@itemdepth\@ne
+    \edef\@itemitem{labelitem\romannumeral\the\@itemdepth}%
+    \list{\csname\@itemitem\endcsname}{%
+      \def\makelabel##1{\hss##1\hss}%
+      \labelwidth2\Cwd \labelsep\z@
+      \itemsep\z@\topsep\z@\parsep\z@}%
+  \fi}{\endlist}
+
+\renewenvironment{description}{%
+  \list{}{\labelwidth\z@ \labelsep\Cwd
+    \itemsep\z@\topsep\z@\parsep\z@
+    \itemindent\labelsep \advance\itemindent-\leftmargin
+    \def\makelabel##1{\bfseries##1}}}{\endlist}
+
 %% --- Capitalised list-environment variants --------------------------
-%% The original class gives Enumerate/ENUMERATE/enumerate* etc. their
-%% own tightened or loosened margins via low-level \@trivlist plumbing.
-%% That margin tuning is a cosmetic nicety, not a structural difference,
-%% so these are kept as plain aliases of the standard environments.
-\let\Enumerate\enumerate \let\endEnumerate\endenumerate
-\let\Itemize\itemize \let\endItemize\enditemize
-\let\Description\description \let\endDescription\enddescription
-\let\ENUMERATE\enumerate \let\endENUMERATE\endenumerate
-\let\ITEMIZE\itemize \let\endITEMIZE\enditemize
-\let\DESCRIPTION\description \let\endDESCRIPTION\enddescription
-\@namedef{enumerate*}{\enumerate}
-\@namedef{endenumerate*}{\endenumerate}
-\@namedef{itemize*}{\itemize}
-\@namedef{enditemize*}{\enditemize}
-\@namedef{description*}{\description}
-\@namedef{enddescription*}{\enddescription}
+%% \Enumerate/\Itemize/\Description tighten the trivlist margins so the
+%% list sits flush with the surrounding paragraph (no extra indent);
+%% the all-caps forms widen them by one extra \Cwd instead; the
+%% asterisked forms shift the whole block by \Cwd in the other
+%% direction. All three work by temporarily overriding the kernel's
+%% \@trivlist -- which \list invokes internally to fix up \leftmargin/
+%% \itemindent once the listdepth-specific defaults have already been
+%% applied -- around a call to the corresponding plain environment.
+\let\latex@trivlist\@trivlist
+\def\lst@trivlist#1#2{%
+  \itemsep\z@\topsep\z@\parsep\z@
+  \leftmargin#1\relax
+  \itemindent\labelwidth \advance\itemindent\labelsep
+  \advance\itemindent#2\relax
+  \let\@trivlist\latex@trivlist \@trivlist}
+
+\def\lst@Trivlist{\def\@trivlist{\lst@trivlist\z@\z@}}
+\@namedef{Enumerate}{\lst@Trivlist\enumerate}
+\@namedef{endEnumerate}{\endlist}
+\@namedef{Itemize}{\lst@Trivlist\itemize}
+\@namedef{endItemize}{\endlist}
+\@namedef{Description}{\lst@Trivlist\description}
+\@namedef{endDescription}{\endlist}
+
+\def\lst@TRIVLIST{\def\@trivlist{\lst@trivlist\z@\Cwd}}
+\@namedef{ENUMERATE}{\lst@TRIVLIST\enumerate}
+\@namedef{endENUMERATE}{\endlist}
+\@namedef{ITEMIZE}{\lst@TRIVLIST\itemize}
+\@namedef{endITEMIZE}{\endlist}
+\@namedef{DESCRIPTION}{\lst@TRIVLIST\description}
+\@namedef{endDESCRIPTION}{\endlist}
+
+\def\lst@strivlist{\def\@trivlist{\lst@trivlist\Cwd{-\Cwd}}}
+\@namedef{enumerate*}{\lst@strivlist\enumerate}
+\@namedef{endenumerate*}{\endlist}
+\@namedef{itemize*}{\lst@strivlist\itemize}
+\@namedef{enditemize*}{\endlist}
+\@namedef{description*}{\lst@strivlist\description}
+\@namedef{enddescription*}{\endlist}
+
+%% --- quote / quotation / verse: indent by \Cwd instead of article.cls's
+%% em-based defaults, to match the original's full-width-character feel.
+\renewenvironment{verse}{%
+  \let\\\@centercr
+  \list{}{\itemsep\z@\topsep\z@\parsep\z@
+    \itemindent-\Cwd \listparindent\itemindent
+    \rightmargin\leftmargin \advance\leftmargin\Cwd}%
+  \item[]}{\endlist}
+
+\renewenvironment{quotation}{%
+  \list{}{\itemsep\z@\topsep\z@\parsep\z@
+    \listparindent\Cwd \itemindent\listparindent
+    \rightmargin\leftmargin}%
+  \item[]}{\endlist}
+
+\renewenvironment{quote}{%
+  \list{}{\itemsep\z@\topsep\z@\parsep\z@
+    \rightmargin\leftmargin}%
+  \item[]}{\endlist}
+
+%% --- \newtheorem: IPSJ style (theorem number optionally italicised,
+%% via a \DESCRIPTION list rather than the kernel's plain trivlist) ----
+%% This replaces the kernel's \newtheorem outright: the original
+%% intercepts it to record, per theorem environment, whether the
+%% counter/heading should be set in \theo@it (italic in English, no-op
+%% in Japanese) before delegating to the kernel's own \@othm/\@nthm to
+%% parse the remaining (standard) \newtheorem arguments.
+\renewcommand{\newtheorem}{\@ifstar
+  {\theo@newtheorem{\theo@it}{\ }}{\theo@newtheorem{}{\theo@sp}}}
+\def\theo@newtheorem#1#2#3{%
+  \@namedef{theo@it@#3}{#1}\@namedef{theo@sp@#3}{#2}%
+  \@ifnextchar[{\@othm{#3}}{\@nthm{#3}}}
+\def\@begintheorem#1#2{\DESCRIPTION \csname theo@it@\@currenvir\endcsname
+  \item[#1\csname theo@sp@\@currenvir\endcsname #2]}
+\def\@opargbegintheorem#1#2#3{\DESCRIPTION
+  \csname theo@style@\@currenvir\endcsname
+  \item[#1\csname theo@sp@\@currenvir\endcsname #2\ (#3)]}
+\let\@endtheorem\endlist
+\ifDS@english
+  \let\theo@it\itshape \let\theo@sp\ %
+\else
+  \let\theo@it\relax \let\theo@sp\relax
+\fi
 
 %% =================================================================
 %% 16. Bibliography

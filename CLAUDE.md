@@ -28,7 +28,7 @@
 
 `\LoadClass{article}` を使う。`ipsj.cls` は独立クラスとして書かれていたが、新クラスでは標準 `article` の上に被せる形にした。理由：
 
-- `article` が提供する `\@startsection` 基盤、`itemize`/`enumerate`/`description`/`quote`/`quotation`/`verse`、`\@float`/`\@dblfloat`、脚注機構などはIPSJクラスでも最終的にほぼ同じ意味で使われており、自前で再実装する必要がない。
+- `article` が提供する `\@startsection` 基盤、`\@float`/`\@dblfloat`、脚注機構などはIPSJクラスでも最終的にほぼ同じ意味で使われており、自前で再実装する必要がない。`itemize`/`enumerate`/`description`/`quote`/`quotation`/`verse` は `\list`/`\@trivlist` という共通の下位機構を使っているため土台は流用できるが、ラベル書式・字下げ幅・行間は原文が独自に上書きしているため、これらは結局`\renewenvironment`で個別に再実装している（§4.13参照）。
 - `\maketitle`/`\@maketitle`/セクション見出し/キャプション/参考文献など、IPSJ固有の部分は全て `\renewcommand`/`\renewenvironment` で上書きするため、ベースが`article`であることは実害がない。
 
 注意点：`article` が既に定義している名前（`\figurename`, `\tablename`, `\refname`, `\appendixname`, `\abovecaptionskip`, `figure`/`table`/`thebibliography` 環境, `\large`〜`\Huge` 等のサイズコマンド）を `\newcommand`/`\newenvironment`/`\newlength` で再定義すると `already defined` エラーになる。**すべて `\renewcommand`/`\renewenvironment` を使うこと。**
@@ -263,6 +263,66 @@
 
 **教訓**：`\AtBeginDocument`でフックを使うパッケージ（`fontspec`系に限らず、`hyperref`等も同様の手法を使うことがある）は、クラス側が想定していないタイミングで`\normalsize`等のカーネルコマンドを**トップレベルで**再実行することがある。クラス内で「一度だけ`\@listi`等を上書きすれば十分」という設計は、こうした再実行で容易に無効化されるため、**繰り返し呼ばれる可能性のある命令（`\normalsize`/`\small`/`\footnotesize`等）の内部に直接組み込む**方が安全である。
 
+### 4.12 既定（論文誌）モードの1ページ目で受付日・採録日が表示されない（重要）
+
+**症状**：`jsample-lualatex.pdf`の1ページ目に、原文`jsample.pdf`にある「受付日2016年3月4日，再受付日2015年7月16日/2015年11月20日，採録日2016年8月1日」（英文では"Received: March 4, 2016, Accepted: August 1, 2016"等）の行が表示されない。`\受付`/`\再受付`/`\採録`（`\received`/`\rereceived`/`\accepted`）は原稿側で正しく呼んでいるにもかかわらず、出力に反映されない。
+
+**原因**：受付・採録日を実際に画面へ出すのは`\@uketsuke`（和文）/`\@euketsuke`（英文）という出力用マクロで、`\authortitle`（タイトルページ組版）からこれを呼び出して初めて表示される。本クラスでは`\@uketsuke`/`\@euketsuke`を**`techrep`モードのフォントレジスタ（`\phantom{...}`で日付を完全に隠す版）でしか定義しておらず**、かつ`\authortitle`の**既定（論文誌）モード版**には`\@uketsuke`/`\@euketsuke`を呼び出す行自体が無かった（techrepモード版の`\authortitle`にのみ存在していた）。原文`ipsj.cls`を確認すると、`\@uketsuke`（実際の日付を組み立てて表示する本来の定義）は既定モードでも使われており、`\authortitle`内で著者欄の直後・概要欄の直前に`{\juketukefont{\@uketsuke}\par}`として呼ばれている。techrepモードは技術報告（採録前提のプレプリント）なので日付を見せない`\phantom`版に**後から上書き**する、という構造だったが、移植時にこの「既定モードでの本来の表示」の方を実装し忘れていた。
+
+**対処**：
+
+1. 本来の`\@uketsuke`/`\@euketsuke`（`\@received`/`\@rereceived`/`\@rerereceived`/`\@accepted`/`\@released`、英文では`\@ereceived`等を組み合わせて表示する版）を、`\received`/`\accepted`等の定義の直後（techrepの`\ifDS@techrep`分岐より前）に追加した。
+2. 既定モードの`\authortitle`（和文・英文の両方）に、著者欄の直後・概要欄の直前へ`{\juketukefont{\@uketsuke}\par}`（英文は`{\Enguketukefont{\@uketsuke}\par}`）、英文著者欄がある場合はその直後にも`{\euketukefont{\@euketsuke}\par}`の呼び出しを追加した。フォントマクロ（`\juketukefont`等）とスキップ量（`\Jauthorjreceivesep`等）は元から定義済みで使われていなかっただけだったため、呼び出しを追加するだけで済んだ。
+
+修正後、`jsample-lualatex.pdf`は10ページ（原文と完全一致）、`esample-lualatex.pdf`は8ページ（変化なし、原文と完全一致）になり、受付・採録日が画素単位で原文と一致する形で表示されることを確認した。`techrep`モード（`main-lualatex.tex`/`tech-jsample-lualatex.tex`）は元から`\phantom`版を使うため影響なし。
+
+**教訓**：「`techrep`モードでは日付を隠す」という仕様だけに着目してphantom版の移植を優先し、**それより基本的な「既定モードでは日付を実際に表示する」という土台の実装を見落とした**。同じマクロ名（`\@uketsuke`）が複数モードで意味の異なる定義を持つ場合、各モードの`\authortitle`を1つずつ独立に全文比較する必要があり、「techrep版が動いているから大丈夫」という確認だけでは既定モードの欠落に気づけない。
+
+### 4.13 `enumerate`/`itemize`/`description`/`quote`/`quotation`/`verse`/`\newtheorem`の「意図的な簡略化」を撤回（重要）
+
+**経緯**：当初の実装では、`\Enumerate`/`\Itemize`/`\Description`/`\ENUMERATE`/`\ITEMIZE`/`\DESCRIPTION`/`enumerate*`/`itemize*`/`description*` を標準の `enumerate`/`itemize`/`description` への単純な `\let` 別名にとどめ、`quote`/`quotation`/`verse` の `\Cwd` ベースのインデント調整・IPSJ向け`\newtheorem`スタイル・`recommendation` 環境は未移植とし、「使用頻度が低い」「枝葉末節」と判断して優先度を下げていた。ところが`jsample-lualatex.pdf`と`jsample.pdf`を見比べたところ、2.1節の箇条書き（`\begin{Enumerate}`使用）の番号書式が「1.」（標準LaTeX）と「(1)」（原文）で異なっており、ユーザーから「簡略化はやりすぎだった、`enumerate`に限らず全て正しく実装し直してほしい」という指摘を受けた。
+
+**原因（技術的詳細）**：原文`ipsj.cls`は次の2階層で `enumerate`/`itemize`/`description` をカスタマイズしている。
+
+1. **基底の`enumerate`/`itemize`/`description`自体を再定義**：`\labelenumi`を`(\,\theenumi\,)`（標準は`\theenumi.`）に、ラベル幅を`2\Cwd`に変更するなど。これは`\Enumerate`等の大文字版とは無関係に、**プレーンな`enumerate`を使うだけで効果がある**変更であり、見落としていた部分。
+2. **`\Enumerate`等の大文字版は、カーネルの`\@trivlist`（`\list`が内部で呼び出す、字下げ確定用のマクロ）を一時的に上書きして、`\leftmargin`/`\itemindent`をさらに調整する**：`\Enumerate`/`\Itemize`/`\Description`は字下げを詰め、`\ENUMERATE`等の全大文字版は`\Cwd`分広げ、`enumerate*`等のアスタリスク版は逆方向に`\Cwd`シフトする。3種とも実体は同じ`\lst@trivlist`に異なる引数を渡しただけ。
+
+「`\Enumerate`を`enumerate`の別名にした」という簡略化だけに注目していたため、1.の基底レベルの再定義が必要なことに気づいておらず、`\Enumerate`を独自実装しても`(1)`書式には到達できなかった（`\Enumerate`は内部で結局`\enumerate`を呼ぶため、土台が標準のままでは番号書式は変わらない）。
+
+**対処**：原文の該当箇所（`ipsj.cls`の「ipsjpapers.styから流用」コメント付き一帯）を以下の方針でそのまま移植した。
+
+- `\labelenumi`〜`\labelenumiv`・`\theenumi`〜`\theenumiv`・`\p@enumii`〜`\p@enumiv`を`\renewcommand`で上書き（`(1)`形式）。
+- `enumerate`/`itemize`/`description`環境自体を`\renewenvironment`で再定義（ラベル幅`2\Cwd`、行間ゼロ等）。
+- `\lst@trivlist`/`\lst@Trivlist`/`\lst@TRIVLIST`/`\lst@strivlist`を移植し、`\Enumerate`/`\Itemize`/`\Description`/`\ENUMERATE`/`\ITEMIZE`/`\DESCRIPTION`/`enumerate*`/`itemize*`/`description*`を`\@trivlist`フック経由の実装に差し替え。
+- `quote`/`quotation`/`verse`を`\renewenvironment`で再定義（`\Cwd`ベースの字下げ）。
+- `\newtheorem`をカーネルの既定動作から完全に差し替え（`\@ifstar`で分岐し、`\theo@it`/`\theo@sp`を経由して`\DESCRIPTION`リストで定理見出しを組む。英文モードでは定理番号がイタリックになる）。
+- `recommendation`環境（SLDM等の「推薦文」）を追加。
+
+修正後、`jsample-lualatex.pdf`の2.1節は`(1)`〜`(11)`の番号付きリストとして原文と画素単位で一致し、`quote`環境（URL表示など、`jsample`/`esample`/`tech-jsample`/`main`/`ses-sample`/`ses-esample`で多用）を含むページも完全一致を確認した。`quotation`/`verse`/`\newtheorem`/`recommendation`は今回のテスト文書群では実際に使用されていないため出力比較はできていないが、原文のコードをそのまま移植してあるため、構造的には同一の挙動になるはずである。
+
+**教訓**：「`X`を`Y`の別名にする」という簡略化を行う際は、**`Y`自体が標準から変更されていないかを必ず確認する**こと。`\Enumerate`が`enumerate`の単純な別名で済むという判断は、暗黙に「`enumerate`自体は標準のまま」という前提に依存していたが、実際には原文がその前提も崩していた。「大文字版だけ特別」という思い込みで調査を打ち切らず、関連する全レベルの定義を原文から再確認する必要がある。
+
+### 4.14 手動の`\pagebreak`/`\newpage`がフォント差による改行位置のズレで巨大な空白を生む（クラス側では対処不可、原稿側の問題）
+
+**症状**：`jsample-lualatex.pdf`の5.2節で、`itemize`の最初の項目の途中で強制的に改段され、その段の残り全体（7ページ目左段のほとんど）が空白になる。
+
+**原因**：`jsample.tex`の該当箇所には、原文の組版に合わせて手動で挿入された`\pagebreak`がitem内の文中（「研究の動機，」の直後）にある。
+
+```latex
+\item[$\Box$] 在来研究との関連，研究の動機，\pagebreak%%%
+              ねらい等が明確に説明されていないのは再考を要する．
+```
+
+`\pagebreak`はその場で即座に改ページするのではなく、**次の行末**に強制改ページ用のペナルティを挿入する仕組みである。元のpLaTeX版ではフォントメトリクスの結果「研究の動機，」がちょうど段の最後の行に来ており、`\pagebreak`は「すでにほぼ埋まっている段の直後」で発火するため目立った空白は生まれない。LuaLaTeX版ではフォント（TeX Gyre Termes/Harano Aji）が異なるため改行位置がわずかにずれ、「研究の動機，ねらい等が明確に説」までが1行に収まってしまう。その行末で同じ`\pagebreak`が発火するため、まだ段の上部にもかかわらず強制的に改段され、段の残り全体が空白になる。
+
+文章の内容自体は壊れていない（次の段の先頭で正しく続く）。**これはクラス側の不具合ではなく、特定の行送り位置を前提にした`\pagebreak`/`\nopagebreak`/`\newpage`が、フォント差による改行位置のズレに対して構造的に脆いという、原稿（.tex）側の問題**である。フォントメトリクスが完全に一致しない限り、どのような実装をしてもこの種の手動改ページ位置だけは原文と完全に一致させることはできない。
+
+**対処**：`jsample-lualatex.tex`からは該当`\pagebreak`を削除した（ユーザーの指示により、見た目を整えるため）。`itemize`/`enumerate`/`description`等の自前実装そのものに問題はなく、§6.2のページ数・他の全ページの目視比較は変更前から完全一致している。他の文書を移植する際も、手動の`\pagebreak`/`\nopagebreak`/`\newpage`がitemやparagraphの**途中**に置かれている箇所があれば、目視比較で不自然な空白が出ていないか確認し、出ていればその挿入位置を削除・調整する必要がある（§6.3の手順に追加済み）。
+
+同じ文書の5.5節末尾（`\end{itemize}`の直後、5.6節の直前）にも `\newpage` がもう1箇所あり、同種の症状（7ページ目右段がほぼ空白）を引き起こしていた。これも削除した。`\newpage`は段の途中ではなく節の境界にあったため、削除した結果**ページ数自体が10ページから9ページに変わった**（原文`jsample.pdf`は10ページのまま）。これは「`\newpage`が指定された地点が、原文の組版ではちょうど次ページの先頭と一致していたが、フォント差で詰まった本クラスの組版ではまだページに余裕がある地点だった」ことを意味し、`\newpage`を削除して自然な流れに任せた方が、空白を残すよりも原文の体裁に近い。`\pagebreak`の場合（§4.14前半）と異なり、`\newpage`の削除はページ数自体を変化させる場合があることに注意。
+
+**この節からの一般的な教訓**：`\pagebreak`/`\nopagebreak`/`\newpage`/`\enlargethispage`等、原稿中に直接書かれた**絶対位置依存の組版命令**は、フォントを変更すると全て疑わしいと考えるべきである。1箇所見つかったら、同じ文書に他にないか`grep`で網羅的に確認すること（本件では`\pagebreak`と`\newpage`の2箇所があり、片方を直してから初めてもう片方が次の症状として見えてきた）。
+
 ## 5. 当初の `main.tex` 検証では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書 `main-lualatex.tex`（`main.tex` を移植、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -271,7 +331,7 @@
 - `\Editor`／`\Ediname` テーブル（TOD/TBIO/CVA/SLDM固有の「担当編集委員」「Communicated by」表記）。
 - `\urlj`/`\urle`/`\refdatej`/`\refdatee`/`\doi`（参考文献中のURL・DOI・アクセス日表記）。
 - `\acknowledgment`（謝辞見出し）。`\end{acknowledgment}` に対応する `\endacknowledgment` は原文にも存在しないが、`\csname endacknowledgment\endcsname` が未定義のとき自動的に `\relax` として確定する（TeXの`\csname`の仕様）ため、これは欠落ではなく元々そういう仕様だった。
-- `\Enumerate`/`\Itemize`/`\Description`/`\ENUMERATE`/`\ITEMIZE`/`\DESCRIPTION`/`enumerate*`/`itemize*`/`description*`。原文は `\@trivlist` を使った専用のインデント幅調整を行っていたが、新クラスでは標準の `enumerate`/`itemize`/`description` への単純な別名にとどめている（意図的な簡略化）。
+- `\Enumerate`/`\Itemize`/`\Description`/`\ENUMERATE`/`\ITEMIZE`/`\DESCRIPTION`/`enumerate*`/`itemize*`/`description*`。当初は標準の `enumerate`/`itemize`/`description` への単純な別名にとどめていたが、原文の`\@trivlist`フックを使った専用実装に差し替えた（§4.13参照）。
 - `\CaptionType`（`figure`/`table`環境内で見出しの種類を切り替える）。
 - `\<`（pTeX時代の字送り調整ヒント。LuaTeX-jaでは不要なので `\relax` の単純な空命令とした）。
 - `\：`（全角コロンを1文字幅・改行禁止で出力するマクロ）。
@@ -316,10 +376,10 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 |---|---|---|---|---|
 | `main-lualatex.tex` | `main.tex`（実論文） | `submit,techrep,noauthor` | 8 / 8 | ほぼ画素単位で一致 |
 | `tech-jsample-lualatex.tex` | `tech-jsample.tex`（公式サンプル） | `submit,techrep,noauthor` | 6 / 6 | ほぼ画素単位で一致 |
-| `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 9 / 10 | 構造は一致、1ページ分の行送り差 |
+| `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 9 / 10 | 構造は一致、1ページ差（§4.14参照） |
 | `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 8 / 8 | 完全一致 |
 
-`jsample` の1ページ差は、フォントメトリクスの違い（原文はTimes/Helvetica系+和文ベクタフォント、新版はTeX Gyre Termes/Heros + Harano Aji）による行末・改ページ位置の累積的なズレであり、構造上の不具合ではない（見出し・図表・著者紹介・参考文献など全要素は正しく再現されている）。なおこの数値は§4.11の`itemize`/`enumerate`行間バグ修正後のもの（修正前は`jsample`が11ページ、`esample`が9ページで、いずれも実際より1ページ多かった）。
+この数値は§4.11の`itemize`/`enumerate`行間バグおよび§4.12の受付・採録日欠落バグの修正後のもの（修正前は`jsample`が11ページ、`esample`が9ページで、いずれも実際より1ページ多かった）。両方を修正した結果、いったんは`jsample`/`esample`とも原文とページ数完全一致（10/10、8/8）になったが、その後§4.14で`jsample.tex`中の手動`\pagebreak`/`\newpage`2箇所（フォント差由来の不自然な空白の原因だった）を削除したところ、`jsample`は9ページに変化した（`esample`はこの種の手動改ページが無いため8ページのまま）。9/10という1ページ差は、削除前の11/10や9/9（旧itemizeバグ修正後の暫定値）とは異なり、**手動改ページ命令を取り除いた結果として生じた差**であり、§6.2冒頭の他の1ページ差（フォントメトリクスの違いによる行末・改ページ位置の累積的なズレ）と同種の、構造上の不具合ではない差である。
 
 `techrep` モードの2文書がページ数完全一致なのは、研究報告の本文がdense vol/no/DOI表記を持たず、見出しの行間調整等の影響を受けにくいためと考えられる。
 
@@ -335,6 +395,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 8. `lualatex` で2回コンパイルし、`Undefined control sequence` 等が出ないか確認する
 9. BibTeXを使っている場合は `upbibtex -kanji=utf8 <jobname>` で文献リストを生成する（§6.4参照）
 10. 元のPDF（pLaTeXでビルド済みのもの）とページ数・レイアウトを目視比較する
+11. `\pagebreak`/`\nopagebreak`/`\newpage` をitem・段落の途中に手動で挿入している箇所があれば、目視比較で不自然な空白が出ていないか確認する（§4.14参照）。出ていれば、その`\pagebreak`等を削除するかコメントアウトするのが基本対応（クラス側では直せない）
 
 ### 6.4 実在する研究論文7件での追加検証
 
@@ -372,7 +433,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`uplatex` のような未知のクラスオプションは無害**：`\documentclass[...,uplatex,...]{ipsj-lualatex}` のように、本クラスが宣言していないオプション名が紛れていても、`\ProcessOptions` はそれを無視し最後に "Unused global option(s)" という警告を出すだけで、コンパイルは止まらない（7件中1件で確認）。旧原稿のオプション指定をそのまま使い回しても実害はない。
 - **その他、特に問題なく動作したサードパーティパッケージ**：`amsmath`, `colortbl`, `ascmac`, `subcaption`, `multirow`, `xcolor`, `tcolorbox`, `inconsolata`, `algorithm`/`algorithm2e`/`algpseudocode`, `slashbox`, `enumitem`, `cite`, `url`/`xurl`, `comment`, 自作の下線パッケージ（`udline.sty`、`\iftdir` 等汎用的なLaTeX2eの書き方のみを使用）。これらは`graphicx`系以外は元々ドライバオプションを取らないため変更不要だった。
 
-**注記**：この7件検証の時点では§4.11の`itemize`/`enumerate`行間バグはまだ発見されていなかった。元のzip/展開先は検証後に削除済みのため、修正後のページ数で再検証はできていないが、`itemize`/`enumerate`を使っている文書（7件中複数）では、行間が詰まった分だけページ数がさらに減っている可能性がある（§4.11参照）。
+**注記**：この7件検証の時点では§4.11の`itemize`/`enumerate`行間バグ、§4.12の受付・採録日欠落バグ（既定モードの文書のみ影響、`techrep`モードの文書には影響なし）はまだ発見されていなかった。元のzip/展開先は検証後に削除済みのため、修正後のページ数で再検証はできていないが、`itemize`/`enumerate`を使っている文書ではページ数がさらに減っている可能性があり（§4.11参照）、既定モード（`techrep`を指定していない論文誌投稿）の文書では1ページ目に受付・採録日が追加で表示されるようになっているはずである（§4.12参照）。
 
 ### 6.5 SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプション
 
@@ -439,12 +500,13 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **クラス側の本物のバグを発見・修正**（§4.10参照）：メールアドレスを持たない著者の上付き文字に余分なカンマが付くバグ。`\expandafter<count>\csname...\endcsname`形式の代入に`\relax`終端が無く、TeXの数値スキャン中に直後の`\ifnum`条件文が代入完了前の古い値で実行されてしまうことが原因。5件目（全著者がメールアドレス省略）で初めて可視化されたが、実際には全文書に潜在していた（メールアドレスのある著者では「出るべきカンマ」と重なって無症状だった）。
 - それ以外（`pxjahyper`削除、`jlisting.sty`の文字コード変換、`upbibtex -kanji=utf8`の使用）は§6.4と同じ対応で問題なく解決した。
 - **この5件検証のさらに後で§4.11の`itemize`/`enumerate`行間バグを発見**（`fontspec`が`\AtBeginDocument`で`\normalsize`を再実行し、一度きりのリスト間隔修正を無効化する問題）。この表のページ数はバグ修正**前**のものであり、元のzip/展開先は検証後に削除済みのため再検証はできていない。`itemize`を使っている文書（1〜4件目、特に「べからず集」的なチェックリストを含むもの）では、修正後さらにページ数が減っている可能性がある。
+- §4.12の受付・採録日欠落バグは`ses`オプション（`techrep`を内部で有効化する）には影響しない。`ses`は元から`\@uketsuke`の`\phantom`版（日付を隠す版）を使うため、この5件はいずれも影響を受けない。
 
 ## 7. 未検証・未対応の既知事項
 
 - **縦組（`tate`）**：エンジンレベルの切り替え（`\AtBeginDocument{\tate}`）のみ実装。複雑な2段組タイトルページが縦組で正しく組まれるかは未検証。
 - **各論文誌種別固有の文字列**（ACS/PRO/TOD/TOM/CDS/DC/DCON/CVA/TBIO/SLDM/TCEのヘッダ文言・DOIプレフィクス・既定年算出式）：原文からテキストとして移植したが、個別にコンパイル確認したのは `techrep`（既定/DAM相当）と `JIP` のみ。
-- **`\newtheorem` のIPSJ向けスタイル**、`quote`/`quotation`/`verse` の `\Cwd` ベースのインデント調整、`recommendation` 環境：未移植（標準LaTeXの挙動になる）。実際の使用頻度が低いため優先度を下げた。
+- **`\newtheorem`**・`quotation`/`verse`・`recommendation` 環境：§4.13でコード自体は原文から移植済みだが、テスト文書群のいずれも実際に使用していないため、出力比較による動作確認はまだできていない（`quote`環境と`enumerate`/`itemize`/`description`本体は全テスト文書で使用されており確認済み）。
 - **著者紹介の写真**：`\IfFileExists{<stem>.eps}` で `.eps` のみを確認する（原文と同じ仕様）。PNG/JPEG/PDF画像を直接使いたい場合は、この判定部分を拡張する必要がある。
 - **`tombow` のオフセット調整**：トンボの位置（紙端からの距離）は10mm固定。原文にあった `\@tombowwidth` 相当のカスタマイズ余地は設けていない。
 
