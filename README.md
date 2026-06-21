@@ -123,7 +123,9 @@ lualatex main.tex
 - `\received`, `\accepted`, `\rereceived`, `\rerereceived`, `\released`, `\Presented`、および和文別名 `\受付`, `\採録`, `\再受付`, `\再再受付`, `\発表`
 - `\Editor`（編集委員名挿入。TOD/TBIO/CVA/SLDM）
 - `\urlj`, `\urle`, `\refdatej`, `\refdatee`, `\doi`
-- `\Enumerate`, `\Itemize`, `\Description`, `\ENUMERATE`, `\ITEMIZE`, `\DESCRIPTION`, `enumerate*`, `itemize*`, `description*`
+- `enumerate`, `itemize`, `description`（IPSJ仕様の番号書式・字下げ。`enumerate`は`(1)`形式）、`\Enumerate`, `\Itemize`, `\Description`, `\ENUMERATE`, `\ITEMIZE`, `\DESCRIPTION`, `enumerate*`, `itemize*`, `description*`（大文字・アスタリスク版は字下げ幅のみ異なる）
+- `quote`, `quotation`, `verse`（IPSJ仕様の`\Cwd`ベースの字下げ）
+- `\newtheorem`（IPSJ仕様の定理見出し書式）、`recommendation` 環境（推薦文）
 - `\setcounter{巻数}{...}`, `\setcounter{号数}{...}`, `\setcounter{月数}{...}`（和文カウンタ名のエイリアス）
 
 ### 7. `\zw` を裸の単位として書いていた箇所は要修正
@@ -152,6 +154,8 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 
 と指定しています。別のフォントに差し替えたい場合は、`\documentclass` の後で `\setmainjfont` 等を再度呼べば上書きできます（`luatexja-fontspec` の標準的な使い方です）。旧クラスにあった `JY1`/`JT1` エンコーディングや太明朝・太ゴシックの仮想フォント差し替え（`submit` オプション無指定時の「太ミン」「太ゴ」）は、対応する物理フォントの Bold ウェイトに置き換えています。
 
+**太字明朝とゴシックの代用について**：原文`ipsj.cls`が前提としていた和文フォント環境には明朝の太字（Bold）シェイプが無く、`\bfseries`は自動的にゴシックで代用されていました（和文組版の古くからの慣習）。本クラスが採用する Harano Aji Mincho は本物の Bold ウェイトを持つため、何も対策しなければ見出し・概要ラベル・図表番号・著者紹介の氏名などが原文と異なり太字明朝で出てしまいます。これを避けるため、クラス内部でこれらの箇所には明示的に`\gtfamily`を指定し、原文と同じ見た目（太字ゴシック）になるようにしています。利用者が原稿中で独自に`\mcfamily\bfseries`等を使う場合はこの代用は働かず、本物の太字明朝がそのまま使われます。
+
 ### 9. 縦組（`tate`）・トンボ（`tombow`）
 
 - `tate` オプションは `luatexja` 本体が提供する `\tate` への切り替えのみを行います。タイトルページの複雑な段組みまで含めた縦組での見た目は十分に検証していません。本格的に縦組で使う場合は出力を必ず目視確認してください。
@@ -178,7 +182,6 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 ## 既知の制限
 
 - 全ての論文誌種別オプション（`ACS`/`PRO`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`TCE`）のヘッダ文字列・DOI表記・年度算出式は移植していますが、個別に組版確認をしたのは `techrep` と `JIP` のみです。
-- `\newtheorem` のIPSJ向けカスタマイズ、`quote`/`quotation`/`verse` のインデント調整、`recommendation` 環境は移植していません（標準LaTeXの動作になります）。
-- `\Enumerate` 系の大文字環境は、旧クラスが持っていた専用のインデント幅調整を省略し、標準の `enumerate`/`itemize`/`description` の別名として実装しています。
+- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境および`enumerate`/`itemize`/`description`本体は全テスト文書で使用されており、原文と画素単位で一致することを確認済みです）。
 
 詳細な技術的決定の根拠・移植作業の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。

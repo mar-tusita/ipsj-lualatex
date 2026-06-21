@@ -681,9 +681,14 @@
 %% 10. Abstract / keyword boxes
 %% =================================================================
 
-\def\GAIYOU{\ifDS@abstract{\hskip1\zw}\else\textbf{概要}：\fi}
+%% Bold Japanese text has no genuine Mincho-Bold shape in the original
+%% toolchain, so the original always renders it via Gothic instead (see
+%% CLAUDE.md for the full writeup); \gtfamily makes that explicit here
+%% since Harano Aji Mincho *does* have a real bold weight and would
+%% otherwise render true bold Mincho instead.
+\def\GAIYOU{\ifDS@abstract{\hskip1\zw}\else{\gtfamily\bfseries 概要}：\fi}
 \def\EGAIYOU{\itshape\bfseries\sffamily Abstract:\hskip.5em}
-\def\JKEYWORD{\textbf{キーワード}：}
+\def\JKEYWORD{{\gtfamily\bfseries キーワード}：}
 \def\EKEYWORD{\itshape\bfseries\sffamily Keywords:\hskip.5em}
 
 \newbox\@abstractbox  \newbox\@eabstractbox
@@ -1177,10 +1182,10 @@
   {\reset@font\normalsize\gtfamily\bfseries\mathversion{bold}\selectfont}}
 \renewcommand{\paragraph}{\@startsection{paragraph}{4}{\z@}%
   {.5\Cvs}{.00001\Cvs}%
-  {\reset@font\normalsize\bfseries\selectfont}}
+  {\reset@font\normalsize\gtfamily\bfseries\selectfont}}
 \renewcommand{\subparagraph}{\@startsection{subparagraph}{5}{\z@}%
   {.5\Cvs}{.00001\Cvs}%
-  {\reset@font\normalsize\bfseries\selectfont}}
+  {\reset@font\normalsize\gtfamily\bfseries\selectfont}}
 
 \renewcommand\appendixname{\ifDS@english Appendix\else\kintou{5\zw}{付録}\fi}
 \renewcommand\appendix{\par
@@ -1251,12 +1256,23 @@
 \newbox\ipsj@boxa
 \newbox\ipsj@boxb
 
+%% Bold Japanese text has no genuine Mincho-Bold shape in the original
+%% toolchain, so the original always renders it via Gothic instead (see
+%% CLAUDE.md); \gtfamily makes that explicit for the "図1"/"表1" label.
+%% Guarded by \ifDS@english since \@makecaption/\@twocolcaption are also
+%% used for plain-English \caption calls in english-mode documents (see
+%% esample.tex), where there is no kanji and \gtfamily would be a no-op
+%% at best -- but switching the (unused) kanji family still perturbs
+%% luatexja's line-height bookkeeping enough to shift pagination by a
+%% line, so it must not be applied there.
+\def\ipsj@boldlabel{\ifDS@english\bfseries\else\gtfamily\bfseries\fi}
+
 \long\def\@makecaption#1#2{%
-  \setbox\ipsj@boxa\hbox{\footnotesize{\bfseries#1}\hskip1\zw{#2}}%
-  \setbox\ipsj@boxb\hbox{\footnotesize{\bfseries#1}\hskip1\zw}%
+  \setbox\ipsj@boxa\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw{#2}}%
+  \setbox\ipsj@boxb\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw}%
   \ifdim\wd\ipsj@boxa>\capwidth
     \parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
-      {\bfseries#1}\hskip1\zw#2}\par
+      {\ipsj@boldlabel#1}\hskip1\zw#2}\par
   \else
     \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
   \fi
@@ -1280,11 +1296,11 @@
 \def\twocolcaption{\refstepcounter\@captype\@dblarg{\@twocolcaption\@captype}}
 \long\def\@twocolcaption#1[#2]#3{\par
   \begingroup\footnotesize
-  \setbox\ipsj@boxa\hbox{{\bfseries\csname fnum@#1\endcsname}\hskip1\zw#3}%
-  \setbox\ipsj@boxb\hbox{{\bfseries\csname fnum@#1\endcsname}\hskip1\zw}%
+  \setbox\ipsj@boxa\hbox{{\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}%
+  \setbox\ipsj@boxb\hbox{{\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw}%
   \ifdim\wd\ipsj@boxa>\twocolcapwidth
     \hbox to\textwidth{\hfil\parbox[t]{\twocolcapwidth}{\hangindent\wd\ipsj@boxb
-      {\bfseries\csname fnum@#1\endcsname}\hskip1\zw#3}\hfil}\par
+      {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hfil}\par
   \else
     \hbox to\textwidth{\hfil\box\ipsj@boxa\hfil}%
   \fi
@@ -1347,7 +1363,10 @@
   \let\bf@or@normal\normalfont
   \@ifundefined{ipsj@used@#1}{%
     \expandafter\gdef\csname ipsj@used@#1\endcsname{1}%
-    \let\bf@or@normal\bfseries}{}%
+    %% Japanese "図"/"表" has no real Mincho-Bold in the original
+    %% toolchain (see CLAUDE.md); English "Fig./Table" keeps its
+    %% ordinary (Latin) bold.
+    \ifDS@english\let\bf@or@normal\bfseries\else\def\bf@or@normal{\gtfamily\bfseries}\fi}{}%
   \bf@or@normal\prefix@figtabref\ref{#1}\egroup}
 
 %% --- Editor-in-charge (TOD/TBIO/CVA/SLDM) -----------------------------
@@ -1389,7 +1408,7 @@
   \ifDS@english
     \noindent{\bfseries Editor's Recommendation}\par
   \else
-    \noindent{\bfseries 推薦文}\par
+    \noindent{\gtfamily\bfseries 推薦文}\par
   \fi}{\par}
 
 %% --- Acknowledgments --------------------------------------------------
@@ -1397,7 +1416,7 @@
 %% auto-defines it to \relax when absent -- intentionally not defined.
 \def\acknowledgment{\par
   \ifDS@english{\bfseries Acknowledgments}\hskip1em\ignorespaces%
-  \else{\bfseries 謝辞}\hskip1\zw\ignorespaces\fi}
+  \else{\gtfamily\bfseries 謝辞}\hskip1\zw\ignorespaces\fi}
 
 %% --- enumerate / itemize / description: IPSJ label & margin style ----
 %% The original class overrides these directly (not just the
@@ -1446,7 +1465,7 @@
   \list{}{\labelwidth\z@ \labelsep\Cwd
     \itemsep\z@\topsep\z@\parsep\z@
     \itemindent\labelsep \advance\itemindent-\leftmargin
-    \def\makelabel##1{\bfseries##1}}}{\endlist}
+    \def\makelabel##1{\gtfamily\bfseries##1}}}{\endlist}
 
 %% --- Capitalised list-environment variants --------------------------
 %% \Enumerate/\Itemize/\Description tighten the trivlist margins so the
@@ -1652,9 +1671,9 @@
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \hangindent30mm\hangafter-8\relax
     \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#2}\hskip.5em\@BreakMember
-    {\fontsize{13\Q}{18\h}\selectfont#3}%
+    \baselineskip18\h{\fontsize{13\Q}{18\h}\selectfont#3}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \def\no@eprofile#1#2{%
   \noindent\begin{minipage}[t]{\columnwidth}%
   \raisebox{3mm}{\pushtowall{\begin{minipage}[t]{25mm}
@@ -1665,16 +1684,16 @@
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \hangindent30mm\hangafter-8\relax
     \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\hskip.5em\@BreakMember
-    {\fontsize{13\Q}{18\h}\selectfont#2}%
+    \baselineskip18\h{\fontsize{13\Q}{18\h}\selectfont#2}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \def\n@eprofile#1#2{%
   \noindent\begin{minipage}[t]{\columnwidth}%
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \mbox{\fontsize{13\Q}{18\h}\bfseries\selectfont#1}\hskip.5em\@BreakMember
-    {\fontsize{13\Q}{18\h}\selectfont#2}%
+    \baselineskip18\h{\fontsize{13\Q}{18\h}\selectfont#2}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \else
 \def\ip@eprofile[#1]#2#3#4{%
   \noindent\begin{minipage}[t]{\columnwidth}%
@@ -1687,12 +1706,12 @@
   \end{minipage}}}}%
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \hangindent30mm\hangafter-7\relax
-    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#3}\hskip1.6\zw\@BreakMember
+    \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#3}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#2}%
     \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
-    {\fontsize{13\JQ}{21\h}\selectfont#4\@title@member}%
+    \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#4\@title@member}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \def\no@eprofile#1#2#3{%
   \noindent\begin{minipage}[t]{\columnwidth}%
   \raisebox{3mm}{\pushtowall{\begin{minipage}[t]{25mm}
@@ -1702,21 +1721,21 @@
   \end{minipage}}}%
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
     \hangindent30mm\hangafter-7\relax
-    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
+    \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#1}%
     \hangindent30mm{\normalsize\@@member}\\[.5\Cvs]
-    {\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
+    \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \def\n@eprofile#1#2#3{%
   \noindent\begin{minipage}[t]{\columnwidth}%
   \pushtowall{\begin{minipage}[t]{\columnwidth}%
-    \mbox{\fontsize{15\JQ}{0\h}\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
+    \mbox{\fontsize{15\JQ}{0\h}\gtfamily\bfseries\selectfont#2}\hskip1.6\zw\@BreakMember
     \ipsj@setmember{#1}%
     {\normalsize\@@member}\\[.5\Cvs]
-    {\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
+    \baselineskip21\h{\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
   \end{minipage}}%
-  \end{minipage}\global\let\@BreakMember\relax\par}
+  \end{minipage}\global\let\@BreakMember\relax\par\vskip2\Cvs}
 \fi
 \fi
 \let\inhibitglue\relax

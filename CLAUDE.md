@@ -31,6 +31,14 @@
 - `article` が提供する `\@startsection` 基盤、`\@float`/`\@dblfloat`、脚注機構などはIPSJクラスでも最終的にほぼ同じ意味で使われており、自前で再実装する必要がない。`itemize`/`enumerate`/`description`/`quote`/`quotation`/`verse` は `\list`/`\@trivlist` という共通の下位機構を使っているため土台は流用できるが、ラベル書式・字下げ幅・行間は原文が独自に上書きしているため、これらは結局`\renewenvironment`で個別に再実装している（§4.13参照）。
 - `\maketitle`/`\@maketitle`/セクション見出し/キャプション/参考文献など、IPSJ固有の部分は全て `\renewcommand`/`\renewenvironment` で上書きするため、ベースが`article`であることは実害がない。
 
+**`jlreq`を使わなかった理由**：和文クラスの選択肢として`jlreq`（基本版面を自動計算する高機能な現代的和文クラス）も検討対象になり得るが、以下の理由で採用しなかった。
+
+1. **`ipsj.cls`自体が「固定版面」であり、`jlreq`の強み（基本版面の自動計算）を活かす場面が無い**：§2.3で確認した通り、`ipsj.cls`は紙サイズオプションに応じた版面計算ロジックを持ちながら、最終的にその結果を一切使わずA4・本文幅177mm等の数値をハードコードで無条件上書きしている（5230〜5269行目）。つまり移植対象そのものが「グリッドから計算する」発想ではなく「決まった数値を生の`\setlength`で叩き込む」発想で書かれている。`jlreq`を基底にしても自動計算機能は使わず全項目を生数値で上書きすることになるため強みを活かせず、むしろ`jlreq`が裏で管理しようとする`\baselineskip`等の値と衝突し、§4.11（`\AtBeginDocument`がクラス側の一度きりの上書きを後から無効化した問題）と同種の二重管理バグを増やすリスクが大きい。
+2. **`ipsj.cls`自身のアーキテクチャが`jclasses.dtx`（=`article`系pLaTeXクラス）の慣用句で書かれている**：`\@startsection`/`\@float`/`\@dblfloat`/`\@maketitle`/`\@makecaption`といった`article`/`jclasses`系の標準フックをそのまま`\renewcommand`で上書きする構造になっている。新クラスでも同じフック名を持つ`article`を土台にすることで、原文の各行と新クラスの各行を1:1に対応させたまま移植できる。`jlreq`は同名フックを持っていても内部実装の前提（版面計算との結びつき方）が異なるため、全フックについて対応づけを再検討する手間とリスクが生じ、互換性再現という目的に対して何のメリットも生まない。
+3. **縦組要件は`luatexja-core`の`\tate`だけで十分だった**：§1.2の縦組要件に対し、`jlreq`の縦組サポートは`jlreq`独自の版面モデル（コラムの流れ方向、脚注配置等）と一体になっている。`ipsj.cls`の縦組は単に「`\tate`に切り替えて、それ以外は同じ固定A4レイアウトを使う」という単純なものなので、`jlreq`の縦組エンジンを採用すると2つの前提を整合させる作業が新たに必要になり、要件を超えた複雑性を持ち込む。
+
+公平な評価として、`jlreq`の方が日本語組版として工学的に「正しい」設計であり、§4.11や§4.15のような`\baselineskip`スコープ系のバグは`jlreq`ベースなら発生しなかった可能性もある。しかし今回のゴールは「より良い日本語組版を作る」ことではなく「`ipsj.cls`という特定の、既に固定された出力を再現する」ことであり、自前で値を計算しようとするエンジンを足すことは忠実な再現を難しくする方向に働くと判断した。
+
 注意点：`article` が既に定義している名前（`\figurename`, `\tablename`, `\refname`, `\appendixname`, `\abovecaptionskip`, `figure`/`table`/`thebibliography` 環境, `\large`〜`\Huge` 等のサイズコマンド）を `\newcommand`/`\newenvironment`/`\newlength` で再定義すると `already defined` エラーになる。**すべて `\renewcommand`/`\renewenvironment` を使うこと。**
 
 ### 2.2 エンジン・フォント
@@ -50,6 +58,23 @@
   - `Harano Aji Mincho` / `Harano Aji Gothic` は **Regular/Bold の実ウェイトを両方持つ**（`haranoaji` パッケージ）。フェイクボールド処理は不要。
   - `TeX Gyre Termes` / `TeX Gyre Heros` も Regular/Bold/Italic/BoldItalic を完備。
 - 旧クラスの `JY1`/`JT1` エンコーディングによる仮想フォント差し替え（太明朝=FutoMin, 太ゴシック=FutoGoth, `submit`オプション無指定時のタイトル用）は、対応する物理フォントのBoldウェイト（`\mcfamily\bfseries` / `\gtfamily\bfseries`）に単純化した。
+
+**これらのフォントを選び、他を選ばなかった理由**：TeX Liveには和文・欧文ともに多数のフォントが収録されているが、以下の根拠で他の選択肢を排した。
+
+和文（Mincho/Gothic）について：
+
+- **原文`ipsj.cls`が前提としていた具体的なフォントの正体**：`ipsj.cls`を`grep`すると、`\usefont{JY1}{fmb}{m}{n}% FutoMin`（2767行目）等、JY1/JT1エンコーディングの仮想フォント名「FutoMin」「FutoGoth」が太字明朝・太字ゴシックとして使われている（605〜631行目）。森澤（モリサワ）配布の`morisawa`パッケージ（`morisawa.dtx`、CTAN/texjporg）を確認したところ、通常ウェイトの明朝・ゴシックは`Ryumin-Light-J`/`GothicBBB-Medium-J`（リュウミン/中ゴシックBBB相当）であり、太字側は同パッケージで`FutoMinA101-Bold-J`/`FutoGoB101-Bold-J`（「太ミンA101」「太ゴB101」、モリサワが別途販売する独立した太字専用書体）として定義されている。つまり`ipsj.cls`が前提とする和文書体の系統は、**リュウミン/中ゴシックBBBという伝統的な商用フォント**である（IPA系のような独自デザインの和文フォントではない）。なお、このFutoMin/FutoGoth仮想フォントの宣言（`\ifDS@english\else...\fi`内）は文書全体の`\bfseries`に効くものではなく、§2.2既述の通り`submit`オプション無指定時のタイトル表示という限られた箇所でのみ使われていた特殊なものであり、§4.16で発見した「`\bfseries`が和文明朝で太字ゴシックに自動代替される」という一般的な挙動とは別の仕組みである。
+- **`Harano Aji Mincho`/`Harano Aji Gothic`を選んだ理由**：これらは「源ノ明朝」/「源ノ角ゴシック」（Source Han Serif/Sans、Adobe・Google共同開発のオープンソースCJKフォント。Googleからは"Noto Serif/Sans CJK"の名でも配布されている）を、**Adobe-Japan1（AJ1）字形順に組み替え直した派生フォント**である（ライセンスはSource Han同様SIL Open Font License 1.1で、自由に再配布できる）。AJ1字形順への組み替えは、`ipsj.cls`のようなpLaTeX系クラスが内部で前提とするCID-keyedフォントの字形順序（伝統的にdvipdfmx等がAJ1前提でCIDマッピングを行う）に合わせるための変換であり、**pTeX/pLaTeX系ツールチェーンとの互換性を確保することが主目的**である（後述するRyumin-Light/GothicBBB-Medium系の書体デザインそのものを継承しているわけではない）。TeX Live自体も2019年頃のライセンス事情の変化を受けて、和文の既定フォントをこの`haranoaji`パッケージに切り替えており（`jlreq`/`ltjsclasses`/`BXjscls`等、現代的な和文LuaLaTeXクラスの既定フォントでもある）、「TeX Live標準環境だけで追加インストール不要に動く」という本プロジェクトの要件（README §必要環境）に合致する、かつ**明朝・ゴシックの両方でRegular/Boldの実ウェイトが揃っている**（§2.2既述）という実務上の利点が決定的だった。
+- **`IPAex明朝`/`IPAexゴシック`（旧TeX Live既定）を選ばなかった理由**：`fc-list`で確認したところ、いずれも**`style=Regular`の単一ウェイトしか持たず、太字（Bold）の実体が存在しない**。本クラスは§4.16で発見した「明朝には元々太字が無いのでゴシックで代用する」という原文の慣習を**ゴシック側の本物の太字**で再現する必要があり、IPAexではゴシック側もフェイクボールド（線を太らせるだけの疑似処理）になってしまい、太字が必要な見出し等の品質が原文より劣化する。なお字形デザインはSource Han系・Ryumin系のいずれとも異なる独立した設計（情報処理推進機構（IPA）による開発）である。
+- **`Noto Sans/Serif CJK JP`を選ばなかった理由**：これは前述の通り`Harano Aji`と**同じ「源ノ」字形デザイン**を採用したフォントであり、見た目の差はほぼ無い。選ばなかった理由は字形デザインではなく実務上の理由のみ：標準的なTeX Live配布物には同梱されておらず、`luatexja-fontspec`から使うにはシステムへの別途インストールが必要になり、「追加インストール不要」という本プロジェクトの要件（README §必要環境）に反する。また、AJ1字形順への変換が施されていないため、伝統的なCID-keyed和文フォント周りの処理（dvipdfmx経由の出力等）との相性は`Harano Aji`の方が確実である。
+- **いずれを選んでも、`ipsj.cls`本来が前提としていたRyumin-Light/GothicBBB-Medium（商用、森澤由来）の書体デザインそのものとは一致しない**：これは本プロジェクトが許容する既知の限界であり、フォントを変更した時点で避けられない差である（TeX Gyre Termes/HeroesとTimes/Helveticaの関係も同様、後述）。
+
+欧文（Times/Helvetica相当）について：
+
+- **原文`ipsj.cls`が前提としていた具体的なフォントの正体**：`ipsj.cls`を`grep`すると、ヘッダ・タイトル等のラテン文字部分で`\usefont{OT1}{ptm}{m}{n}%Times`（1441, 1455, 1899, 1905行目等）、`\usefont{OT1}{ptm}{b}{n}%Times-Bold`（2762, 2768行目）、`\usefont{OT1}{phv}{b}{n}`（1198, 2983, 3075行目）が多数使われている。`ptm`/`phv`はPSNFSS（dvips時代のPostScriptフォント切り替え機構）における**Times（Nimbus Roman系）/Helvetica（Nimbus Sans系）の標準識別子**であり、コメントにも明示的に「Times」と書かれている。さらに5236行目には`%%\AtBeginDocument{\RequirePackage{txfonts}}`という、Times/Helvetica互換のPostScriptフォントパッケージ`txfonts`を読み込む処理がコメントアウトで残っている。これらから、`ipsj.cls`の原作者はラテン文字部分に明確に**Times（本文）/Helvetica（見出し等のサンセリフ）**を意図していたことが分かる（Computer Modernではない）。
+- **`TeX Gyre Termes`/`TeX Gyre Heros`を選んだ理由**：これらはGUST e-foundryプロジェクトによる、`txfonts`の基盤と同じ**URW Nimbus Roman/Nimbus Sans**（Times/Helvetica互換のPostScriptフォント）をOpenType化し、`fontspec`/`luatexja-fontspec`から直接使えるよう整備したものである。`txfonts`（Type1 PostScriptフォント）はLuaLaTeXの`fontspec`ベースのフォント選択とは相性が悪く直接使えないため、**同じ字形系列を保ったままOpenType・fontspec対応にした後継**として最適だった。Regular/Bold/Italic/BoldItalicを完備しており、§4.16のような「ウェイトが足りないことによる予期しない代替」のリスクも無い。
+- **`Latin Modern`（LuaLaTeXの既定フォント）を選ばなかった理由**：何も指定しなければLuaLaTeXは`Latin Modern`（Computer Modernの後継）を使うが、これは原文`ipsj.cls`が前提とするTimes/Helvetica系の見た目とは明確に異なる「TeX標準書体」の外観であり、学術論文ヘッダー等の見た目が原文と大きく変わってしまうため採用しなかった。
+- **`Liberation Serif/Sans`等の他のTimes/Helvetica互換クローンを選ばなかった理由**：TeX Gyreと同様にTimes/Helvetica互換だが、TeX LiveにおけるOpenType・`fontspec`対応の完成度・収録の安定性でTeX Gyreの方が標準的であり、`luatexja-fontspec`の公的なドキュメント・サンプルでも欧文側の組み合わせとして例示されているため、実績のあるTeX Gyreを選んだ。
 
 ### 2.3 ページジオメトリ：A4固定の根拠
 
@@ -90,6 +115,19 @@
 
 - `tombow`：`eso-pic` の `\AddToShipoutPictureBG` + `\AtPageLowerLeft` を使い、A4の四隅（0,0〜210,297mm、各10mm）に直線を描画。`picture` 環境の `\unitlength`/`\line` を使った素朴な実装。元クラスの `\tombowtrue`/`\maketombowbox` はpLaTeXカーネル（plcore）提供のプリミティブで、LuaLaTeXには存在しないため、ロジックは完全に新規実装。
 - `proof`：元の `\if@Proof` 分岐（1027〜1038行目）をそのまま移植。`\@Ltop`/`\@Rtop`/`\@Lbot`/`\@Rbot` の4つのマクロが、ヘッダ・フッタの隅に短いL字のルールを描画する。これはpLaTeX固有プリミティブに依存しない素のTeXコードなので1:1で移植可能だった。
+
+### 2.6 実装言語：`expl3`を使わなかった理由
+
+本クラスのコードは全て古典的なLaTeX2eカーネルマクロのスタイル（`\def`/`\renewcommand`/`\@ifundefined`/`\csname...\endcsname`等）で書かれており、`expl3`（LaTeX3のプログラミング層、`\ExplSyntaxOn`/`\tl_set:Nn`等）は一切使用していない（`ipsj-lualatex.cls`を`ExplSyntax`で`grep`して0件であることを確認済み）。検討した上での判断であり、理由は以下の通り。
+
+- **原文`ipsj.cls`自体、および本クラスが乗っている`luatexja-core.sty`/`luatexja.sty`自体も、いずれもexpl3を一切使っていない**（3ファイルとも`grep`で`ExplSyntax`系の記述が0件であることを確認済み）。`ipsj.cls`は`\@ifundefined`等の古典的なLaTeX2eカーネル慣用句で、`luatexja`本体もLua連携部分以外は同様の古典マクロスタイルで書かれている。つまり、移植対象（原文）も土台のエンジン（luatexja）もどちらもexpl3とは無縁の世界で書かれている。
+- **原文とのコードの1:1対応が、忠実な移植における最大の安全策になっている**（§2.1の`jlreq`不採用と同じ論理）。本クラスは`ipsj.cls`のほぼ全てのマクロをそのまま`\renewcommand`/`\renewenvironment`で移植する方針を取っており、原文の各行と新クラスの各行を直接対応させられることが、出力の忠実性を検証する最も確実な手段になっている。expl3の関数ベース記法（`\tl_set:Nn`等）で書き直すと、原文との行単位の対応関係が失われ、「書き直したコードが原文と同じ振る舞いをするか」を独自に、しかも原文とは全く異なる記法のまま再検証する必要が生じる。
+- **本プロジェクトで発見したバグの多くは、TeXプリミティブの低レベルな挙動に起因していた**：§4.4（`\@tempboxa`/`\@tempboxb`の再入問題）、§4.10（`\csname...\endcsname`直後の`\relax`欠落により数値スキャン中に後続の`\ifnum`が代入前の値で実行されてしまう問題）、§4.11（`\AtBeginDocument`フックによる`\normalsize`のトップレベル再実行）、§4.15（`\fontsize`の`\baselineskip`設定がグループスコープに閉じてしまう問題）。これらは展開順序・グルーピングスコープ・数値スキャン仕様といった、TeXエンジンの生の挙動を直接推論しないと見つからない種類のバグだった。expl3はまさにこの種の低レベルな挙動を意識させない設計（高位の関数・データ構造でTeXの足回りを隠蔽し、安全に使えるようにする）であり、これは新規開発では長所だが、「既存の低レベルな挙動を一字一句再現できているか」を検証する今回の作業には不向きだった。
+- **新規ロジックがほとんど無く、expl3のデータ構造的な強みを活かす場面が無い**：実装の大半は原文の条件分岐（`\ifDS@english`等）・寸法演算（`\setlength`/`\advance`）・`\csname`によるレジスタアクセスを1:1で移植するだけであり、expl3が解決する「複雑なデータ構造（seq/clist/prop等）の安全な操作」「関数命名規則による名前空間汚染の回避」といった問題が、今回の作業ではそもそも発生しない。
+
+なお、本クラス自身のコードはexpl3を使っていないが、`\RequirePackage{luatexja-fontspec}`経由で読み込まれる`fontspec.sty`は内部で`xparse`（expl3ベースのインターフェースパッケージ）を`\RequirePackage`しているため、実行時には依存関係を通じて間接的にexpl3が読み込まれる。これは依存先パッケージの実装詳細であり、本クラス自身の設計判断とは無関係である。
+
+公平な評価として、expl3は新規開発であれば現代的で安全なLaTeX3公式推奨スタイルであり、§4.x節で見つかったバグの一部（特にカウンタ・文字列操作系）はexpl3で書けばそもそも発生しなかった可能性がある。しかし`jlreq`の場合と同様、今回のゴールは「より安全なコードを書く」ことではなく「`ipsj.cls`という既存の固定された出力を一字一句再現する」ことであり、原文と異なる記法・抽象化層を挟むことは、忠実な再現の検証を難しくする方向に働くと判断した。
 
 ## 3. オプション名対応表
 
@@ -188,7 +226,7 @@
 4. 氏名の直後・本文の前に会員種別の「（正会員）」等を出力し、その後 `\\[.5\Cvs]` で改行してから本文を続ける（本文の末尾に称号「フェロー」等が付く）。
 5. 会員種別の判定マクロ `\@@member`/`\@title@member` は、**呼び出しごとに明示的に空へリセットしてから** `\@for` で再計算する必要がある（`\ipsj@setmember` ヘルパーを新設）。リセットを忘れると `\edef` の結果が前のエントリから引き継がれてしまう。
 
-修正後は `jsample-lualatex.tex`／`esample-lualatex.tex` の著者紹介ページが参照PDFと同じレイアウトになることを確認した。
+修正後は `jsample-lualatex.tex`／`esample-lualatex.tex` の著者紹介ページが参照PDFと同じレイアウトになることを確認した。**ただしこの時点では、エントリ単体の見た目しか検証しておらず、複数エントリ間の行間（`\vskip2\Cvs`）の移植漏れには気づいていなかった（後日§4.15で発覚・修正）。**
 
 ### 4.9 英文モードの `\author` でラベルが完全に失われるバグ（重要）
 
@@ -323,6 +361,66 @@
 
 **この節からの一般的な教訓**：`\pagebreak`/`\nopagebreak`/`\newpage`/`\enlargethispage`等、原稿中に直接書かれた**絶対位置依存の組版命令**は、フォントを変更すると全て疑わしいと考えるべきである。1箇所見つかったら、同じ文書に他にないか`grep`で網羅的に確認すること（本件では`\pagebreak`と`\newpage`の2箇所があり、片方を直してから初めてもう片方が次の症状として見えてきた）。
 
+### 4.15 著者紹介（`\profile`）のエントリ間・本文行間が原文より詰まって見える（重要、2段階で発覚）
+
+**症状（1段目）**：`jsample-lualatex.pdf`末尾の著者紹介（`biography`環境、`\profile`を複数回使用）が、原文`jsample.pdf`と比べてエントリ間の行間が詰まって見える。実際には1ページに収まる`\profile`エントリの数が原文より多く、全体的に窮屈な印象になる。
+
+**原因（1段目）**：原文`ipsj.cls`の`\ip@eprofile`/`\no@eprofile`/`\n@eprofile`（`\profile`の内部実装、写真あり・なし・枠なしの3パターン）は、いずれも各エントリの組版を終えた直後に`\vskip2\Cvs`（全角2行分の行送り）を挿入しており、これがエントリ同士の間隔を作っている。本クラスでは§4.8で報告したとおり、写真欄と本文欄を独立した`\pushtowall`（ゼロ幅オーバーレイ）で重ねる方式に作り替えていたが、各エントリの末尾を`\end{minipage}\global\let\@BreakMember\relax\par}`で終えるだけで、原文にある**`\vskip2\Cvs`の移植を丸ごと落としていた**。§4.8の調査では枠線・写真配置・字下げ・会員種別表記の再現に注力し、「エントリ間の間隔」という一段階上のレイアウト要素を見落としていた。
+
+**対処（1段目）**：`\ip@eprofile`/`\no@eprofile`/`\n@eprofile`の全6種（和文・英文 × 写真あり/なし/枠なし）の末尾を、`\par}` から `\par\vskip2\Cvs}` に統一して変更した（6箇所とも同一の変更だったため`replace_all`で一括修正）。
+
+**症状（2段目）**：1段目の修正後も、ユーザーから「エントリ間ではなく、各著者の紹介文**本文の行間そのもの**がまだ詰まって見える」という指摘を受けた。
+
+**原因（2段目）**：本文（紹介文）のフォント設定は原文・本クラスとも `\fontsize{13\JQ}{21\h}\selectfont` で一致しており、サイズ自体に差はなかった。差は**`\baselineskip`をどこで設定しているか**にあった。原文は
+
+```latex
+\baselineskip=21\h{\fontsize{13\JQ}{21\h}\selectfont #3\csname @title@member\endcsname}%
+```
+
+のように、`\baselineskip=21\h`を**`{...}`グループの外側**で明示的に代入してから、グループ内で`\fontsize`を適用している。一方、本クラスは
+
+```latex
+{\fontsize{13\JQ}{21\h}\selectfont#3\@title@member}%
+```
+
+と`\fontsize`だけをグループ内に置いていた。`\fontsize{size}{skip}\selectfont`は内部的に`\baselineskip`を`skip`相当の値に設定するが、これは**`{...}`グループに対してローカルな代入**になる。`biography`環境は冒頭で`\footnotesize`（行送り`18\h`）に切り替えているため、グループを閉じた瞬間に`\baselineskip`は`\footnotesize`の`18\h`へ巻き戻ってしまい、その後TeXが段落をライン分割する際に**本文用に意図した21\hではなく18\hの行送りが使われてしまう**。原文が`\baselineskip=21\h`をグループの**外側**に置いているのは、まさにこの巻き戻りを防ぐための意図的な配置だったが、移植時に見落として`\fontsize`の自動設定だけに頼っていた。
+
+**対処（2段目）**：原文と同じ位置（`{...}`グループの外側）に`\baselineskip21\h`（英文モードは`\baselineskip18\h`）を明示的に追加した。対象は和文・英文 × 写真あり/なし/枠なしの全6箇所。
+
+修正後、`jsample-lualatex.pdf`・`esample-lualatex.pdf`・`ses-esample-lualatex.pdf`を再コンパイルし、ページ数は変化なし（9/8/8）。`pdfcrop`で同一座標・同一スケールに切り出した「処理花子」エントリの本文行間を原文と直接比較したところ、行間のピクセル差はほぼゼロ（300dpiで63〜65px、原文も65px）まで一致した。
+
+**教訓**：`\fontsize{size}{skip}\selectfont`は`\baselineskip`を**設定したと思っても、それがどのグループスコープで有効になるか**を常に意識する必要がある。原文が同じ値を二重に（グループ外の明示代入＋グループ内の`\fontsize`）書いているのは冗長に見えて実は必須であり、「同じ値を2回書いているから一方は削っても良い」という早合点は禁物。また、この種の「行間だけが違う」というユーザー指摘は、改めて`pdfcrop`で同一領域を同一スケールで切り出し、ピクセル単位で行送りを比較するまで確証が持てなかった——目視だけでは「詰まって見える」が原因（1段目のエントリ間隔か、2段目の本文行間か）の特定までは難しい。
+
+### 4.16 「太字明朝」は原文では実は常に「ゴシック」で代用されている（クラス全域に影響、重要）
+
+**症状**：`jsample-lualatex.pdf`の著者紹介で、著者名が原文`jsample.pdf`では明らかにゴシック体（サンセリフ・等画線）に見えるのに対し、新版では明朝体（セリフ風・はね/うろこ付き）に見える。
+
+**原因の核心**：原文`ipsj.cls`が前提とする（pLaTeX/upLaTeXの）標準的な和文フォントセットアップでは、**Mincho（明朝）ファミリにBoldシェイプがそもそも宣言されていない**。そのため`\bfseries`を明朝ファミリの状態で呼ぶと、NFSSのフォント代替機構が自動的に**Gothic（ゴシック）ファミリのMediumシェイプ**を代用する。これは「明朝の太字が欲しければゴシックで代用する」という和文組版の古くからの慣習に基づくもので、`ipsj.cls`のコード自体は単に`\bfseries`としか書いていない（`\gtfamily`等の明示的な指定はしていない）。
+
+これを実際に検証するため、`jsample.pdf`をGhostscriptで非圧縮化し`/BaseFont`を全て列挙したところ、**文書全体を通じて`HaranoAjiMincho-Regular`と`HaranoAjiGothic-Medium`の2つしか埋め込まれておらず、`HaranoAjiMincho-Bold`は一切存在しなかった**。つまり原文には太字明朝のグリフが文書中のどこにも無く、太字が必要な箇所は全てゴシックで描画されている。
+
+一方、本クラスは`luatexja-fontspec`経由で`Harano Aji Mincho`を指定しており、このフォントファミリは**Regular/Boldの実ウェイトを両方持つ**（§2.2で確認済み）。そのため`\bfseries`は素直に本物の太字明朝を選択してしまい、原文が依存する「明朝に太字が無いのでゴシックが代用される」という暗黙の挙動が再現されない。`\section`等の見出しコマンドは既に`\gtfamily\bfseries`を明示していたため問題なかったが（おそらく見出しは原文を直接確認して移植したため）、それ以外の多くの箇所は単純に`\bfseries`だけを移植しており、本クラスでは（本物の太字明朝が使えてしまうがゆえに）原文と異なる結果になっていた。
+
+**調査方法**：`ipsj.cls`全体を`\bfseries`で`grep`し（51件）、各箇所が英文（Latin文字、影響なし）か和文（影響あり）かを確認した上で、対応する本クラスの実装と比較した。
+
+**対処**：和文かつ`\bfseries`を使う箇所に`\gtfamily`を追加した。具体的には以下（全て英文モードでは無変更、`\ifDS@english`で和文側のみに適用）：
+
+- `\GAIYOU`（概要ラベル）／`\JKEYWORD`（キーワードラベル）
+- `\paragraph`／`\subparagraph`（既存の`\section`〜`\subsubsection`は元々`\gtfamily`済みだった）
+- `\@makecaption`／`\@twocolcaption`（図表番号「図1」「表1」のラベル部分。英文用の`\ecaption`／`\@twocolecaption`は元から`\rmfamily`系で太字明朝の問題自体が発生しないため無変更）
+- `\figref`/`\tabref`系の初回参照強調（`\bf@or@normal`）：和文「図1」は`\gtfamily`、英文"Fig. 1"は元の`\bfseries`のまま（`\ifDS@english`で分岐）
+- `recommendation`環境（「推薦文」）／`\acknowledgment`（「謝辞」）の和文側
+- `description`環境の`\makelabel`（項目見出しの太字）
+- `\profile`内部実装（`\ip@eprofile`/`\no@eprofile`/`\n@eprofile`の和文3種）の著者名（今回の発端）
+
+**`\@makecaption`/`\@twocolcaption`は要注意**：これらは`\ifDS@english`の内側で分岐させているわけではなく、和文モードでも英文モードでも共通して呼ばれる（英文モードの`esample.tex`は`\ecaption`ではなく素の`\caption`を多用しているため）。そのため`\gtfamily`を無条件に追加すると、英文キャプション（"Fig. 1"等、漢字を含まない）にも適用されてしまう。漢字を含まないので**見た目には何の影響もない**はずだが、`\gtfamily`への切替自体がluatexjaの行送り計算にわずかな影響を与えるらしく、`esample-lualatex.pdf`のページ数が8→9に変化する副作用が実際に発生した。そのため`\ipsj@boldlabel`という小さいヘルパー（`\ifDS@english\bfseries\else\gtfamily\bfseries\fi`）を導入し、英文モードでは元の`\bfseries`のみに留めるよう修正した。
+
+**未解決の副作用**：上記の`\ipsj@boldlabel`分岐を入れた後も、`esample-lualatex.pdf`は8ページから9ページに変化したままで、原因の特定には至っていない。`\figref`/`\tabref`の同様の分岐や、他の和文専用ブランチ（実行されないはずの`\else`側）を個別に元へ戻して再コンパイルしても9ページのままだったため、**単一の変更が原因ではない可能性がある**。新しく増えた9ページ目の中身を確認したところ、最後の著者紹介（"Jiro Gakkai"）が1段組み内に収まらず単独の最終ページに繰り越されただけで、不自然な空白や構造的な破綻は無かった。これは既存の「フォントメトリクスの違いによる1ページ程度のズレ」と同種の許容範囲内の差と判断し、原因の特定よりも視覚的正確性（ゴシック/明朝の区別）の修正を優先した。他のテスト文書（`jsample`/`tech-jsample`/`main`/`ses-sample`/`ses-esample`）のページ数はこの変更で変化していない。
+
+**さらなる残存事項（無害と判断）**：修正後も`jsample-lualatex.pdf`の埋め込みフォントには依然`HaranoAjiMincho-Bold`が含まれている。ログを調査した結果、これは`\mathversion{bold}`（見出し等で使用）が`luatexja-fontspec`の数式シンボルフォント"mincho"の「bold」バージョンとして`HaranoAjiMincho`のBoldシェイプを自動的に宣言する副作用であると判明した（`LaTeX Font Info: Overwriting symbol font 'mincho' in version 'bold' ... JY3/HaranoAjiMincho(0)/m/n --> JY3/HaranoAjiMincho(0)/b/n`）。これは数式モード用のシンボルフォント宣言であり、文書中に実際に和文文字を含む数式中ボールド表記が無ければ、グリフが一切描画されないまま埋め込まれるだけの無害なフォントだと考えられる。全ページを目視確認した範囲では、可視のテキストとして太字明朝が現れている箇所は見つからなかった。原文がこの宣言自体を回避できている理由は、原文の和文フォント設定がそもそもmincho自体をgt系へのsubstitute宣言として組んでいるためと推測されるが、これを完全に同じ形で再現するには`luatexja-fontspec`のシンボルフォント宣言レベルでの変更が必要となり、リスクと労力に対して得られる効果（非表示のフォントが1つ減るだけ）が小さいため、今回は対応を見送った。
+
+**教訓**：「`\bfseries`をそのまま移植すれば十分」という判断は、**原文の和文フォント環境にBoldシェイプが存在するかどうか**という前提を無意識に踏んでいた。本クラスのように実際にBoldウェイトを持つ物理フォント（Harano Aji）を採用する場合、原文が「フォントが無いから仕方なくゴシックで代用していた」だけの箇所が、移植先では「本物の太字明朝が描画できてしまう」という形で逆に視覚的な相違点として表面化する。**`\bfseries`の移植は、出力PDFの`/BaseFont`一覧を確認して「太字明朝が実在するか」を機械的に検証するまで、安全だとみなしてはならない**。
+
 ## 5. 当初の `main.tex` 検証では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書 `main-lualatex.tex`（`main.tex` を移植、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -377,9 +475,9 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 | `main-lualatex.tex` | `main.tex`（実論文） | `submit,techrep,noauthor` | 8 / 8 | ほぼ画素単位で一致 |
 | `tech-jsample-lualatex.tex` | `tech-jsample.tex`（公式サンプル） | `submit,techrep,noauthor` | 6 / 6 | ほぼ画素単位で一致 |
 | `jsample-lualatex.tex` | `jsample.tex`（公式サンプル） | 既定（論文誌・和文） | 9 / 10 | 構造は一致、1ページ差（§4.14参照） |
-| `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 8 / 8 | 完全一致 |
+| `esample-lualatex.tex` | `esample.tex`（公式サンプル） | `english,preprint,JIP` | 9 / 8 | 構造は一致、1ページ差（§4.16参照） |
 
-この数値は§4.11の`itemize`/`enumerate`行間バグおよび§4.12の受付・採録日欠落バグの修正後のもの（修正前は`jsample`が11ページ、`esample`が9ページで、いずれも実際より1ページ多かった）。両方を修正した結果、いったんは`jsample`/`esample`とも原文とページ数完全一致（10/10、8/8）になったが、その後§4.14で`jsample.tex`中の手動`\pagebreak`/`\newpage`2箇所（フォント差由来の不自然な空白の原因だった）を削除したところ、`jsample`は9ページに変化した（`esample`はこの種の手動改ページが無いため8ページのまま）。9/10という1ページ差は、削除前の11/10や9/9（旧itemizeバグ修正後の暫定値）とは異なり、**手動改ページ命令を取り除いた結果として生じた差**であり、§6.2冒頭の他の1ページ差（フォントメトリクスの違いによる行末・改ページ位置の累積的なズレ）と同種の、構造上の不具合ではない差である。
+この数値は§4.11の`itemize`/`enumerate`行間バグおよび§4.12の受付・採録日欠落バグの修正後のもの（修正前は`jsample`が11ページ、`esample`が9ページで、いずれも実際より1ページ多かった）。両方を修正した結果、いったんは`jsample`/`esample`とも原文とページ数完全一致（10/10、8/8）になったが、その後§4.14で`jsample.tex`中の手動`\pagebreak`/`\newpage`2箇所（フォント差由来の不自然な空白の原因だった）を削除したところ、`jsample`は9ページに変化した（`esample`はこの種の手動改ページが無いため8ページのまま）。9/10という1ページ差は、削除前の11/10や9/9（旧itemizeバグ修正後の暫定値）とは異なり、**手動改ページ命令を取り除いた結果として生じた差**であり、§6.2冒頭の他の1ページ差（フォントメトリクスの違いによる行末・改ページ位置の累積的なズレ）と同種の、構造上の不具合ではない差である。`esample`の8→9ページの変化は別の原因によるもので、§4.16のMincho/Gothic代替修正（特に`\@makecaption`/`\@twocolcaption`への`\gtfamily`分岐追加）の後に発生した。最後の著者紹介エントリが最終ページからもう1ページ分繰り越されただけで、空白の異常や構造上の破綻は無いことを確認している。
 
 `techrep` モードの2文書がページ数完全一致なのは、研究報告の本文がdense vol/no/DOI表記を持たず、見出しの行間調整等の影響を受けにくいためと考えられる。
 
