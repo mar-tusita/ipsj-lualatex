@@ -1739,56 +1739,144 @@
 %% line, so it must not be applied there.
 \def\ipsj@boldlabel{\ifDS@english\bfseries\else\gtfamily\bfseries\fi}
 
-\long\def\@makecaption#1#2{%
-  \setbox\ipsj@boxa\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw{#2}}%
+%% \ipsj@capht measures a caption's natural (unwrapped) height via a
+%% \shortstack-based box: \shortstack honours an explicit \\ inside the
+%% caption text as a real line break (a plain \hbox does not -- \\ is a
+%% no-op there that silently swallows the following inter-word space,
+%% e.g. "...caption\\explicitly..." was rendering as one run-together
+%% word). Comparing that height against \baselineskip is how the
+%% original tells "single line" apart from "explicit \\ used" so it can
+%% reuse \parbox (which does honour \\) to lay out the latter.
+\newdimen\ipsj@capht
+\long\def\@makecaption#1#2{\footnotesize
+  \vskip\abovecaptionskip
+  \setbox\ipsj@boxa\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw\shortstack[l]{#2}}%
+  \ipsj@capht\ht\ipsj@boxa \advance\ipsj@capht\dp\ipsj@boxa
   \setbox\ipsj@boxb\hbox{\footnotesize{\ipsj@boldlabel#1}\hskip1\zw}%
-  \ifdim\wd\ipsj@boxa>\capwidth
-    \hfil\parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
-      {\ipsj@boldlabel#1}\hskip1\zw#2}\par
+  \ifdim\ipsj@capht>\baselineskip
+    \ifdim\wd\ipsj@boxa>\capwidth
+      \hfil\parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
+        {\ipsj@boldlabel#1}\hskip1\zw#2}\vskip4\h
+    \else
+      \hfil\parbox[t]{\wd\ipsj@boxa}{\hangindent\wd\ipsj@boxb
+        {\ipsj@boldlabel#1}\hskip1\zw#2}%
+      \par\prevdepth\z@
+      \vskip-1.5\h
+    \fi
   \else
-    \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
+    \ifdim\wd\ipsj@boxa>\capwidth
+      \hfil\parbox[t]{\capwidth}{\hangindent\wd\ipsj@boxb
+        {\ipsj@boldlabel#1}\hskip1\zw#2}%
+      \ifx\@captype\TABLE
+        \ifDS@english\par\vskip.25mm\else\par\prevdepth\z@\vskip-1.5mm\fi
+      \else
+        \par\prevdepth\z@\vskip-1.5\h
+      \fi
+    \else
+      \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
+      \ifDS@english\relax\else\vspace{-\belowcaptionskip}\fi
+    \fi
   \fi
-  \vskip\belowcaptionskip}
+  \vspace{\belowcaptionskip}\par}
 
 \long\def\ecaption#1{{\footnotesize
   \setbox\ipsj@boxa\hbox{\footnotesize{\bfseries\csname fnum@e\@captype\endcsname}%
     \hskip1\zw\shortstack[l]{#1}}%
+  \ipsj@capht\ht\ipsj@boxa \advance\ipsj@capht\dp\ipsj@boxa
   \setbox\ipsj@boxb\hbox{\footnotesize{\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw}%
-  \ifdim\wd\ipsj@boxa>\ecapwidth
-    \hfil\parbox[t]{\ecapwidth}{\hangindent\wd\ipsj@boxb
-      {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\par
+  \ifdim\ipsj@capht>\baselineskip
+    \ifdim\wd\ipsj@boxa>\ecapwidth
+      \hfil\parbox[t]{\ecapwidth}{\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\par
+    \else
+      \hfil\parbox[t]{\wd\ipsj@boxa}{\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\par
+    \fi
   \else
-    \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
-  \fi
-  \vspace{2\belowcaptionskip}\par}}
+    \ifdim\wd\ipsj@boxa>\ecapwidth
+      \hfil\parbox[t]{\ecapwidth}{\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\par
+    \else
+      \hbox to\hsize{\hfil\box\ipsj@boxa\hfil}%
+    \fi
+  \fi}
+  \vspace{2\belowcaptionskip}\par}
 
 %% Wide (full-textwidth) caption machinery for figures/tables that
-%% visually span both columns.
+%% visually span both columns.  Not exercised by any sample/test
+%% document, but ported with the same \shortstack multi-line handling
+%% as \@makecaption/\ecaption above for consistency (see CLAUDE.md).
 \newbox\@dummyfigbox
 \def\twocolcaption{\refstepcounter\@captype\@dblarg{\@twocolcaption\@captype}}
 \long\def\@twocolcaption#1[#2]#3{\par
   \begingroup\footnotesize
-  \setbox\ipsj@boxa\hbox{{\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}%
+  \setbox\ipsj@boxa\hbox{{\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw\shortstack[l]{#3}}%
+  \ipsj@capht\ht\ipsj@boxa \advance\ipsj@capht\dp\ipsj@boxa
   \setbox\ipsj@boxb\hbox{{\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw}%
-  \ifdim\wd\ipsj@boxa>\twocolcapwidth
-    \hbox to\textwidth{\hfil\parbox[t]{\twocolcapwidth}{\hangindent\wd\ipsj@boxb
-      {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hfil}\par
+  \ifDS@english
+    \ifdim\ipsj@capht>\baselineskip
+      \ifdim\wd\ipsj@boxa>\twocolcapwidth
+        \hbox to\textwidth{\hfil\parbox[t]{\twocolcapwidth}{\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hfil}%
+        \par\prevdepth\z@\vskip4\h
+      \else
+        \hbox to\textwidth{\hss\parbox[t]{\wd\ipsj@boxa}{\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hss}%
+        \par\prevdepth\z@\vskip4\h
+      \fi
+    \else
+      \ifdim\wd\ipsj@boxa>\twocolcapwidth
+        \hbox to\textwidth{\hfil\begin{tabular}{p{\twocolcapwidth}}\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3\end{tabular}\hfil}%
+        \par\prevdepth\z@\vskip2.5\h
+      \else
+        \hbox to\textwidth{\hfil\hbox to\twocolcapwidth{\hss\box\ipsj@boxa\hss}\hfil}%
+        \vskip\belowcaptionskip
+      \fi
+    \fi
   \else
-    \hbox to\textwidth{\hfil\box\ipsj@boxa\hfil}%
+    \ifdim\ipsj@capht>\baselineskip
+      \ifdim\wd\ipsj@boxa>\twocolcapwidth
+        \hbox to\textwidth{\hfil\parbox[t]{\twocolcapwidth}{\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hfil}\vskip2\h
+      \else
+        \hbox to\textwidth{\hss\parbox[t]{\wd\ipsj@boxa}{\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3}\hss}\vskip2\h
+      \fi
+    \else
+      \ifdim\wd\ipsj@boxa>\twocolcapwidth
+        \hbox to\textwidth{\hfil\begin{tabular}{p{\twocolcapwidth}}\hangindent\wd\ipsj@boxb
+          {\ipsj@boldlabel\csname fnum@#1\endcsname}\hskip1\zw#3\end{tabular}\hfil}\vskip2\h
+      \else
+        \hbox to\textwidth{\hfil\hbox to\twocolcapwidth{\hss\box\ipsj@boxa\hss}\hfil}%
+      \fi
+    \fi
   \fi
   \endgroup}
-\def\twocolecaption{\@dblarg{\@twocolecaption\@captype}}
-\long\def\@twocolecaption#1[#2]#3{\par
-  \begingroup\footnotesize
-  \setbox\ipsj@boxa\hbox{{\bfseries\csname fnum@e#1\endcsname}\hskip1\zw#3}%
-  \setbox\ipsj@boxb\hbox{{\bfseries\csname fnum@e#1\endcsname}\hskip1\zw}%
-  \ifdim\wd\ipsj@boxa>\twocolecapwidth
-    \hbox to\textwidth{\hfil\parbox[t]{\twocolecapwidth}{\hangindent\wd\ipsj@boxb
-      {\bfseries\csname fnum@e#1\endcsname}\hskip1\zw#3}\hfil}\par
+\long\def\twocolecaption#1{\footnotesize
+  \setbox\ipsj@boxa\hbox{{\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw\shortstack[l]{#1}}%
+  \ipsj@capht\ht\ipsj@boxa \advance\ipsj@capht\dp\ipsj@boxa
+  \setbox\ipsj@boxb\hbox{{\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw}%
+  \ifdim\ipsj@capht>\baselineskip
+    \ifdim\wd\ipsj@boxa>\twocolecapwidth
+      \hbox to\textwidth{\hss\parbox[t]{\twocolecapwidth}{\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\hss}\par\prevdepth\z@
+    \else
+      \hbox to\textwidth{\hss\parbox[t]{\wd\ipsj@boxa}{\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1}\hss}\par\prevdepth\z@
+      \vskip5.9\h
+    \fi
   \else
-    \hbox to\textwidth{\hfil\box\ipsj@boxa\hfil}%
+    \ifdim\wd\ipsj@boxa>\twocolecapwidth
+      \hbox to\textwidth{\hfil\begin{tabular}{p{\twocolecapwidth}}\hangindent\wd\ipsj@boxb
+        {\bfseries\csname fnum@e\@captype\endcsname}\hskip1\zw#1\end{tabular}\hfil}%
+      \par\prevdepth\z@\vskip3\h
+    \else
+      \hbox to\textwidth{\hfil\hbox to\twocolecapwidth{\hss\box\ipsj@boxa\hss}\hfil}%
+      \vspace{\belowcaptionskip}\par
+    \fi
   \fi
-  \endgroup}
+  \ifx\@captype\TABLE\vspace{1mm}\fi}
 \def\twocolfig#1{\hbox to\columnwidth{\hbox to\textwidth{\hss#1\hss}\hss}}
 
 %% =================================================================
