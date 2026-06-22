@@ -85,7 +85,7 @@ lualatex main.tex
 | `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
 | `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1フォント差し替え | 削除し、代わりに`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加してください（`txfonts`自体はLuaLaTeXと互換性がありませんが、それが与えていたTimes/Helvetica系の見た目は`ipsj-lualatex.cls`では再現されないため、見た目を保ちたい場合は明示的な指定が必要です。詳細は後述「フォントの指定方法」） |
 
-実際に13件の研究論文・研究報告（情報処理学会論文誌・研究会原稿・SES（ソフトウェアエンジニアリングシンポジウム）原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。
+`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。
 
 ### 4. 用紙サイズオプションの廃止（重要）
 
