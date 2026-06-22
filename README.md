@@ -8,13 +8,13 @@
 
 ## 必要環境
 
-- **LuaLaTeX**（LuaHBTeX）。TeX Live 2023以降を推奨。
-- 和文フォント: **Harano Aji Mincho** / **Harano Aji Gothic**（TeX Liveに標準収録）
-- 欧文フォントはクラス側では何も指定しません。`fontspec`の既定どおり**Latin Modern**になります（後述「フォントの指定方法」参照）
-- `luatexja`, `luatexja-fontspec`, `fontspec`（`luatexja-fontspec`が自動的に読み込みます）
-- `tombow`オプションを使う場合のみ `eso-pic`
+- **LuaLaTeX**（LuaHBTeX）。比較的新しいTeX Liveを推奨します（開発・動作確認はTeX Live 2026で行っています）。
+- 和文フォント: **Harano Aji Mincho** / **Harano Aji Gothic**（TeX Live 2020以降で標準収録）
+- 欧文フォントをクラス側では特に指定しません。`fontspec`の既定どおり**Latin Modern**になります（後述「フォントの指定方法」参照）
+- `luatexja`, `luatexja-fontspec`, `fontspec`（いずれもTeX Liveに標準収録。`luatexja-fontspec`は`luatexja`本体に同梱されており、`fontspec`を自動的に読み込みます）
+- `tombow`オプションを使う場合のみ `eso-pic`（TeX Liveに標準収録）
 
-これらは標準的なTeX Live環境であれば追加インストール不要です。
+これらは`scheme-full`（全パッケージ導入）のTeX Live環境であれば追加インストール不要です。`scheme-basic`等の最小構成からインストールした場合は、`collection-langjapanese`（和文フォント・`luatexja`等）を追加してください。
 
 ## 最小サンプル
 
