@@ -673,6 +673,25 @@
 
 **教訓**：このバグは約1年分の開発期間中、5つの公式サンプルを含む全テストで一度も目視で気づかれなかった——`esample.tex`はまさにこの「`\\`による改行」機能を**説明するための**サンプルページでありながら、「単語が連結している」という1行の崩れは、ページ全体を一通り見ただけでは見落としやすい部類の不具合だった。これは「目視確認には限界があり、機械的な総当たりチェックでしか見つからない不具合が存在する」という、本セクション冒頭でユーザーが提起した懸念が実際に的中した例である。なお、このバグを修正する過程で、`\@makecaption`冒頭の`\vskip\abovecaptionskip`の欠落も合わせて発見した——これは「`\caption`の構造自体を原文の行ごとに読み比べる」作業を一度きちんとやらない限り見つからない類の欠落であり、§4.18の網羅的読み直しのときにも見逃されていたことになる。
 
+### 4.30 英文側Abstract:/Keywords:ラベルが常にHelveticaになっていた（`\EGAIYOU`/`\EKEYWORD`の`\ifDS@english`/`\if@submit`分岐欠落、重要）
+
+**症状**：ユーザーが`jsample.pdf`（原文）と`jsample-lualatex.pdf`の1ページ目を見比べ、和文論文の中に埋め込まれた英文側の「概要・キーワード」ブロックで、`Abstract:`/`Keywords:`ラベルの字体が異なることを発見した。原文ではボールドイタリックの**セリフ体**（Times系）に見えるが、移植版ではボールドイタリックの**サンセリフ体**（Helvetica系）になっていた。
+
+**原因**：原文`ipsj.cls`はこのラベルに使うマクロを4種類（`\GAIYOU`/`\EGAIYOU`/`\JKEYWORD`/`\EKEYWORD`）持ち、それぞれが「どの環境から呼ばれるか」に応じた`\ifDS@english`（クラス全体が英文モードか）・`\if@submit`（`submit`オプションの有無）の分岐を内部に持つ。
+
+- `\GAIYOU`/`\JKEYWORD`：`\abstract`/`\jkeyword`環境（和文・英文どちらのモードでも使う共通環境）用。`\ifDS@english`が真なら和文の「概要」/「キーワード」の代わりに`\itshape\bfseries\sffamily`（ボールドイタリックHelvetica）で`Abstract:`/`Keywords:`を出す。`esample.tex`（`english`オプション使用）はこちらを使う。
+- `\EGAIYOU`/`\EKEYWORD`：`\eabstract`/`\ekeyword`/`\keyword`環境（**和文モードの文書に埋め込む英文セクション**専用、`jsample.tex`がこちらを使う）用。`\ifDS@english`が偽（=文書全体は和文モード）の場合、さらに`\if@submit`で分岐する：`submit`指定時は`\itshape\bfseries`（**フォントファミリ変更なし**＝周囲の和文中で使われているラテン文字フォント＝Times系のまま）、`submit`未指定時は`\useroman{OT1}{phv}{b}{it}\selectfont`（pLaTeX系の記法でHelvetica系フォント`phv`をボールドイタリックで明示指定）。
+
+移植版の`\EGAIYOU`/`\EKEYWORD`は、この分岐を全く持たず常に`\itshape\bfseries\sffamily`（常にHelvetica）という単一定義に簡略化されていた。`jsample.tex`は`submit`を指定しているため、原文の対応する分岐は「フォントファミリ変更なし（Times系のまま）」になるはずだったが、移植版は無条件にHelveticaへ切り替えてしまっていた。
+
+`esample.tex`（`english`指定）でこの差が表面化しなかったのは、`esample.tex`が使う`\GAIYOU`の`\ifDS@english`真の分岐がもともと`\itshape\bfseries\sffamily`（Helvetica）であり、移植版の簡略化後の`\EGAIYOU`の値と**たまたま一致していた**ため。さらに調査の過程で、移植版の`\abstract`（`\ifDS@english`真の分岐）が`\GAIYOU`ではなく誤って`\EGAIYOU`を呼んでいたことも発見した。原文は`\abstract`の両分岐（英文/和文モード）とも常に`\GAIYOU`を呼び、フォントサイズだけを`\ifDS@english`で変える構造だったが、移植版はラベル選択そのものを`\ifDS@english`で分岐させてしまっていた。これも実害が出ていなかったのは、当時の`\EGAIYOU`の簡略化定義と`\GAIYOU`の`\ifDS@english`真の分岐定義が同じ値（`\itshape\bfseries\sffamily`）だったため。
+
+**対処**：`\GAIYOU`/`\EGAIYOU`/`\JKEYWORD`/`\EKEYWORD`を原文の分岐構造（`\ifDS@english`、および`\EGAIYOU`/`\EKEYWORD`はさらに内側で`\ifDS@submit`）どおりに再実装した。`\useroman{OT1}{phv}{b}{it}\selectfont`（LuaLaTeX/luatexja-fontspecには存在しないpLaTeX系の記法）は、`phv`＝Helveticaであり、本クラスでは`\sffamily`がすでに`Harano Aji Gothic Medium`/`TeX Gyre Heros`に対応しているため、`\sffamily\bfseries\itshape`に読み替えた。`\abstract`の`\ifDS@english`真の分岐が呼ぶマクロも`\EGAIYOU`から`\GAIYOU`に修正し、原文と同じ「両分岐とも`\GAIYOU`を呼び、フォントサイズのみ`\ifDS@english`で変える」構造に戻した。
+
+**結果**：5つの公式サンプル文書、全14件の実文書テストでページ数に変化なし（9/8/6/6/7、10/6/9/9/8/9/9/13/8/9/8/8/2）、エラーなし。`jsample-lualatex.pdf`の英文Abstract:/Keywords:ラベルが原文と同じボールドイタリックTimes系（セリフ体）になり、`esample-lualatex.pdf`側（ボールドイタリックHelvetica系）は変化なしであることを、`pdfcrop`での画素比較で確認した。
+
+**教訓**：`\EGAIYOU`/`\EKEYWORD`は「和文モードの文書に埋め込まれた英文セクション専用」という特殊な立ち位置のマクロで、`\GAIYOU`/`\JKEYWORD`（和文・英文どちらのモードでも共有される環境用）とは分岐の意味が異なる（`\ifDS@english`そのものではなく、その否定分岐の中で**さらに別の条件**`\if@submit`を見る）。両者が似た名前・似た構造を持つために「`\GAIYOU`の方は分岐を保ったから`\EGAIYOU`も同じだろう」とは限らず、それぞれの呼び出し元（`\abstract`/`\jkeyword`は和文・英文共通、`\eabstract`/`\ekeyword`/`\keyword`は和文文書内の英文セクション専用）を1つずつ確認しないと、どちらの`\ifDS@english`分岐がどちらの意味を持つかを誤認しやすい。また、簡略化した2つの定義が**たまたま同じ値に収束する**と、片方（`esample.tex`等）では問題が顕在化せず、もう片方（`jsample.tex`）でだけ見える、という発見しにくいバグになる。
+
 ## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書（ユーザー提供の実論文1件を移植したもの、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：

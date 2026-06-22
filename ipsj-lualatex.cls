@@ -801,10 +801,40 @@
 %% CLAUDE.md for the full writeup); \gtfamily makes that explicit here
 %% since Harano Aji Mincho *does* have a real bold weight and would
 %% otherwise render true bold Mincho instead.
-\def\GAIYOU{\ifDS@abstract{\hskip1\zw}\else{\gtfamily\bfseries 概要}：\fi}
-\def\EGAIYOU{\itshape\bfseries\sffamily Abstract:\hskip.5em}
-\def\JKEYWORD{{\gtfamily\bfseries キーワード}：}
-\def\EKEYWORD{\itshape\bfseries\sffamily Keywords:\hskip.5em}
+%%
+%% \GAIYOU/\JKEYWORD and \EGAIYOU/\EKEYWORD also carry the original's
+%% \ifDS@english branch, which is NOT redundant with the class-wide
+%% \ifDS@english: \GAIYOU/\JKEYWORD are used by \abstract/\jkeyword in
+%% BOTH modes (their branch only picks "概要/キーワード" vs. bold
+%% italic sans "Abstract:/Keywords:"), while \EGAIYOU/\EKEYWORD are
+%% used by \eabstract/\ekeyword/\keyword for the *English-language
+%% block embedded in an otherwise Japanese document* (jsample.tex), so
+%% their \else branch additionally checks \ifDS@submit: with submit,
+%% the label stays bold italic in the ambient (Latin/roman, i.e. TeX
+%% Gyre Termes) font; without submit, the original explicitly forces
+%% Helvetica bold italic via \useroman{OT1}{phv}{b}{it}, which maps to
+%% \sffamily here since \sffamily already is TeX Gyre Heros. Flattening
+%% these to a single unconditional \sffamily (an earlier version of
+%% this file did) silently turned the submit+non-English "Abstract:"/
+%% "Keywords:" labels into Helvetica instead of the original's Times.
+\def\GAIYOU{\ifDS@english
+    \ifDS@abstract{\hskip1em}\else\itshape\bfseries\sffamily Abstract:\hskip.5em\fi
+  \else
+    \ifDS@abstract{\hskip1\zw}\else{\gtfamily\bfseries 概要}：\fi
+  \fi}
+\def\EGAIYOU{\ifDS@english
+    \ifDS@abstract{\hskip1em}\else\sffamily\itshape Abstract:\hskip.5em\fi
+  \else
+    \ifDS@submit\itshape\bfseries\else\sffamily\bfseries\itshape\fi
+    \ifDS@abstract{\hskip1\zw}\else Abstract:\hskip.5em\fi
+  \fi}
+\def\JKEYWORD{\ifDS@english\itshape\bfseries\sffamily Keywords:\hskip.5em
+  \else{\gtfamily\bfseries キーワード}：\fi}
+\def\EKEYWORD{\ifDS@english\itshape\bfseries\sffamily Keywords:\hskip.5em
+  \else
+    \ifDS@submit\itshape\bfseries\else\sffamily\bfseries\itshape\fi
+    Keywords:\hskip.5em
+  \fi}
 
 \newbox\@abstractbox  \newbox\@eabstractbox
 \newbox\@jkeywordbox  \newbox\@ekeywordbox \newbox\@keywordbox
@@ -812,7 +842,7 @@
 \ifDS@english
 \def\abstract{\global\setbox\@abstractbox\hbox\bgroup
   \begin{minipage}[t]{.8\textwidth}\fontsize{12\Q}{14\h}\selectfont
-  \noindent{\EGAIYOU}\ignorespaces}
+  \noindent{\GAIYOU}\ignorespaces}
 \else
 \def\abstract{\global\setbox\@abstractbox\hbox\bgroup
   \begin{minipage}[t]{.8\textwidth}\fontsize{12\JQ}{18\h}\selectfont
