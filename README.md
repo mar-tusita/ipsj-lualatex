@@ -202,3 +202,17 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 本クラスは、`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses.sty`のソースコードを直接読み比べながら実装し、情報処理学会公式サンプル（`jsample`/`esample`/`tech-jsample`）に加え、実際に投稿された論文・研究報告（公開はしていません）多数を使って、pLaTeXでビルドした元のPDFと画素単位で比較する形で検証しています。和文フォントには情報処理学会公式サンプルのPDFも既に使用している `Harano Aji Mincho`/`Harano Aji Gothic` をそのまま採用しているため、和文部分の字体は原文とほぼ完全に一致します。
 
 その一方で、LuaLaTeX（LuaTeX-ja）とpLaTeXでは行送り・改ページの計算がエンジンレベルでわずかに異なるため、原稿によっては最終的なページ数が元のpLaTeX版と1ページ程度ずれることがあります。これは検証の過程で繰り返し確認しており、内容の欠落・崩れではなく、ページ内の余白の配分がわずかに変わることによる無害な差です。逆に、ページ数が大きくずれる・図表が消える・文字が異常な書体になるといった症状は、本クラス側の変換ミスである可能性が高いので、ぜひ報告してください。
+
+## 謝辞
+
+本クラスは、以下のソフトウェア・フォント・データなしには成立しませんでした。
+
+- **`ipsj.cls` / `ipsjpref.sty` / `ipsjtech.sty`**：本クラスの変換元であり、移植作業の全てはこのコードを読み解くことから始まりました。原作者（Hiroshi Nakashima氏、Yasuki Saito氏ほか）と情報処理学会論文誌ジャーナル編集委員会に感謝します。
+- **`ses.sty`／SES改変版`ipsj.cls`**：IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム（SES）が独自に配布・保守しているスタイルファイルです。情報処理学会ソフトウェア工学研究会ならびにSES運営委員会に感謝します。
+- **TeX Live**：本クラスの開発・動作確認の基盤となったTeX配布環境です。TeX Users Groupに感謝します。
+- **LuaTeX-ja**：`\tate`、和文/欧文フォントの分離管理、`\kanjiskip`/`\xkanjiskip`等、LuaTeXで日本語組版を実現するための基盤そのものです。LuaTeX-jaプロジェクトに感謝します。
+- **fontspec**：本クラスのフォント選択は全て`fontspec`（および`luatexja-fontspec`によるその和文拡張）に依拠しています。原作者のWill Robertson氏ならびにThe LaTeX projectに感謝します。
+- **Harano Aji Mincho / Harano Aji Gothic**（`haranoaji`パッケージ）：本クラスが採用する和文フォント。Adobe・Googleが共同開発した源ノ明朝・源ノ角ゴシック（Source Han Serif/Sans）をAdobe-Japan1字形順に組み替えたもので、情報処理学会公式サンプルのPDFも同じフォントで組まれています。作者のMasamichi Hosoda氏に感謝します。
+- **TeX Gyre Termes / TeX Gyre Heros**：Times/Helvetica系の見た目が欲しい場合に使う欧文フォント。GUST e-foundryプロジェクトに感謝します。
+- 検証作業では、`Ghostscript`・`ImageMagick`・`pdfminer.six`・`qpdf`・Dockerの`texlive/texlive`公式イメージにも大いに助けられました。原文との画素単位の比較や、埋め込みフォントの直接確認といった検証手法は、これらのツールなしには実行できませんでした。
+- **Claude Code** 本ツールの開発全般にわたって利用しました。
