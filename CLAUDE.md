@@ -786,9 +786,9 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 
 ### 6.5 SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプション
 
-情報処理学会が配布する標準の `ipsj.cls`/`ipsjtech.sty` とは別に、SES（IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム）が独自に配布している、研究報告スタイルをベースに**ヘッダ（学会名表記）・DOI/補助ヘッダ行・footerの著作権表記・ページ番号をすべて非表示にした**亜種一式（`ipsj.cls`（`ses`オプション追加版）, `ses.sty`, `ses-sample.tex`, `ses-esample.tex`）が存在する。これをユーザーから提供を受けて検証し、`ipsj-lualatex.cls` 側にも `ses` オプションとして実装した。
+情報処理学会が配布する標準の `ipsj.cls`/`ipsjtech.sty` とは別に、SES（IPSJ/SIGSE ソフトウェアエンジニアリングシンポジウム）が独自に配布している、研究報告スタイルをベースに**ヘッダ（学会名表記）・DOI/補助ヘッダ行・footerの著作権表記・ページ番号をすべて非表示にした**亜種一式（`ipsj.cls`（`ses`オプション追加版）, `ses.sty`, `ses-sample.tex`, `ses-esample.tex`）が存在する。これをユーザーから提供を受けて検証し、`ipsj-lualatex.cls` 側にも `ses` オプションとして実装した。このSES改変版`ipsj.cls`は、無印の`ipsj.cls`（IPSJ公式配布版、本書§1.1の移植元）と名前が衝突するため、`ses-ipsj.cls`という名前でリポジトリに参照用として保持している（§8参照）。
 
-実物の `ipsj.cls`（SES改変版）を `diff` した結果、本質的な変更は次の3点のみだった。
+実物の `ses-ipsj.cls`（`ipsj.cls`のSES改変版）を `diff` した結果、本質的な変更は次の3点のみだった。
 
 ```latex
 \newif\ifDS@ses \DS@sesfalse
@@ -872,6 +872,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 | `ipsj.cls`, `ipsjpref.sty`, `ipsjtech.sty`, `ipsjsort*.bst`, `ipsjunsrt*.bst` | 変換元（pLaTeX用、保持のため残置） |
 | `jsample.tex`/`esample.tex`/`tech-jsample.tex` と各PDF | 情報処理学会公式サンプル（pLaTeX用）。追加検証で使用 |
 | `jsample-lualatex.tex`/`esample-lualatex.tex`/`tech-jsample-lualatex.tex` と各PDF | 上記サンプルを `ipsj-lualatex.cls` 用に移植したもの |
-| `ses-sample-lualatex.tex`/`ses-esample-lualatex.tex` と各PDF | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（§6.5参照）。元になったpLaTeX版（`ses-sample.tex`/`ses-esample.tex`/`ses.sty`等）はユーザー提供の一時的な検証資料であり、検証後にこのリポジトリから削除済み |
+| `ses-sample-lualatex.tex`/`ses-esample-lualatex.tex` と各PDF | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（§6.5参照） |
+| `ses-ipsj.cls`, `ses.sty`, `ses-sample.tex`/`ses-esample.tex` と各PDF | 上記の移植元となったSES配布版一式（pLaTeX用、保持のため残置）。`ses-ipsj.cls`はIPSJ公式配布の`ipsj.cls`をSES側が独自に改変したもので（`\ifDS@ses`/`\DeclareOption{ses}`/ファイル末尾の`\input{ses.sty}`フックを追加。差分は`diff ipsj.cls ses-ipsj.cls`で確認できる）、無印の`ipsj.cls`とは別物のため名前を分けている。当初はユーザー提供の一時的な検証資料として検証後に削除する想定だったが、`ses.sty`同様、参照用として恒久的に保持する方針に変更した |
 | `README.md` | 利用者向けの使い方・相違点ドキュメント |
 | `CLAUDE.md` | 本ドキュメント |
