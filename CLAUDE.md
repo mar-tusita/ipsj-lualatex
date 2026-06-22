@@ -721,6 +721,34 @@
 
 **教訓**：`grep`で見つかった`\usefont{OT1}{ptm}...}`等の存在だけを見て「原文はこのフォントを前提としている」と判断したのが誤りの根本だった。実際にはその呼び出しが**どの条件分岐の中にあるか**（`\if@submit`の真偽どちらの枝か）まで確認する必要があり、さらにクラスとドキュメントのどちらがその選択をしているのかも区別する必要があった（`txfonts`は`esample.tex`というドキュメントの選択であり、`ipsj.cls`というクラスの選択ではない）。`platex`で実際にコンパイルして`\rmdefault`の値や埋め込みフォント名を直接確認するという、推測に頼らない実証的な検証手段に切り替えたことで初めて誤りに気づけた。また、この誤りが1年近い開発期間中ずっと見つからなかった理由は、**たまたま検証に使っていた`esample.tex`が`txfonts`を読んでいたため、誤った「クラスがTimesを強制する」実装でも偶然正しい見た目になっていた**ことに起因する——`txfonts`を読んでいない`jsample.tex`側でユーザーが具体的な字形の違和感（「太すぎる」）を指摘するまで、発覚の機会が無かった。
 
+### 4.32 `techrep`モードのヘッダ「IPSJ SIG Technical Report」が原文ではComputer Modernなのに常にHelveticaになっていた（`\DOIHeadfont`の上書き漏れ、重要）
+
+**症状**：ユーザーが`tech-jsample.pdf`と`tech-jsample-lualatex.pdf`の各ページ左上隅にある"IPSJ SIG Technical Report"（`techrep`モードのランニングヘッダの副題行）を見比べ、原文ではComputer Modernらしき書体なのに、移植版ではHelveticaらしき書体になっていると指摘した。
+
+**原因**：この行は`\DOIHeadfont`というフォントマクロで組まれているが、`\DOIHeadfont`は**`ipsj.cls`本体と`ipsjtech.sty`の両方で別々に定義されている同名マクロ**であり、`techrep`指定時は`ipsjtech.sty`が`ipsj.cls`の本体読み込み完了後にファイル末尾で`\input`されるため、**`ipsjtech.sty`側の定義が`ipsj.cls`側の定義を`\def`で単純に上書きする**（§1.1で既述の「`ipsj.cls`は`\input{ipsjtech.sty}`で後から上書きする」構造そのもの）。
+
+```latex
+%% ipsj.cls 本体（既定の論文誌モード用）
+\def\DOIHeadfont{\fontsize{11\Q}{0\h}%\usefont{OT1}{phv}{m}{n}\selectfont
+\sffamily\selectfont}
+
+%% ipsjtech.sty（techrepモード用、後から上書き）
+\def\DOIHeadfont{\fontsize{11\Q}{0\h}%\usefont{OT1}{phv}{m}{n}\selectfont
+\selectfont}
+```
+
+両方とも`\usefont{OT1}{phv}{m}{n}\selectfont`（Helvetica明示指定）の行自体は`%`でコメントアウトされ無効化されている（原文の作者が一度検討して見送った形跡）。違いは**コメントの直後、改行を挟んだ2行目**にある：`ipsj.cls`本体は`\sffamily\selectfont`（サンセリフへの切替が活きている）だが、`ipsjtech.sty`は`\selectfont`のみ（フォントファミリの切替が無く、アンビエントなフォントのまま）。つまり**既定の論文誌モードでは"DOI:"行はサンセリフだが、`techrep`モードの"IPSJ SIG Technical Report"行はアンビエントなフォント（何も指定しなければComputer Modern、現在はLatin Modern）のまま**という、モードによって異なる仕様だった。
+
+移植先`ipsj-lualatex.cls`は`\DOIHeadfont`を1つだけ定義しており（`\def\DOIHeadfont{\fontsize{11\Q}{0\h}\sffamily\selectfont}`、`ipsj.cls`本体側の値）、`techrep`モード用に`ipsjtech.sty`の上書き版（`\sffamily`無し）を再現する処理が無かった。このため`techrep`指定時も常に`\sffamily`（Helvetica系）になっていた。
+
+**発見の経緯**：§4.31で「クラスはラテン文字フォントを固定すべきではない」という方針に転換した直後、ユーザーが`tech-jsample`で同種の見落としが他にもないか確認した結果、見つかった。`ipsj.cls`と`ipsjtech.sty`を`\DOIHeadfont`で`grep`し、2つの定義の**2行目だけが違う**ことに気づいて原因を特定した。
+
+**対処**：`ipsj-lualatex.cls`の`\ifDS@techrep`分岐内（`\ps@IPSJTITLEheadings`の`techrep`版を定義している箇所）で`\DOIHeadfont`を`\sffamily`無しの版に再定義し、`ipsjtech.sty`のファイル読み込み順による上書きを再現した。
+
+**結果**：5公式サンプル＋実文書18件すべてでページ数に変化なし（jsample-lualatex.pdfは出力先のファイルロックのため`-jobname`を変えた一時ファイルで検証）。`tech-jsample-lualatex.pdf`の"IPSJ SIG Technical Report"行を`pdfminer`で確認したところ、フォントが`LMRoman8-Regular`（Latin Modern Roman、Regular）になり、原文`tech-jsample.pdf`の`CMR8`（Computer Modern Roman）と字体・サイズが一致することを確認した。`ses`オプション（`ses.sty`の上書きで"IPSJ SIG Technical Report"行自体を非表示にする）には影響なし。
+
+**教訓**：同名のマクロが複数のファイル（`ipsj.cls`本体／`ipsjpref.sty`／`ipsjtech.sty`）で別々に定義され、`\input`の実行順で後から上書きされる、という原文の構造（§1.1）は、`\@maketitle`/`\authortitle`等の大きなマクロだけでなく、`\DOIHeadfont`のような小さな1行のフォントマクロにも及んでいた。`ipsj.cls`本体だけを見て「`\DOIHeadfont`はこういうものだ」と判断するのは不十分で、`techrep`/`preface`関連のマクロは必ず`ipsjtech.sty`/`ipsjpref.sty`側にも同名の再定義が無いかを確認する必要がある。さらに今回も§4.27/§4.30/§4.31と同じパターン——**コメントアウトされた`\usefont`呼び出しを「使うつもりだったのだろう」と早合点して有効化してしまう**——が、ファイルをまたいだ定義の違いという形で再発した。
+
 ## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書（ユーザー提供の実論文1件を移植したもの、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：

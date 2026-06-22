@@ -1329,6 +1329,13 @@
 \ifDS@techrep
 \def\ipsj@signame@DAM{\ifDS@english IPSJ SIG Technical Report%
   \else 情報処理学会研究報告\fi}
+%% ipsjtech.sty's own \DOIHeadfont (which overrides ipsj.cls's, since
+%% \input{ipsjtech.sty} happens after the main class body) drops the
+%% \sffamily that ipsj.cls's version has: the "IPSJ SIG Technical
+%% Report" line stays in the ambient (Latin Modern unless the document
+%% requests otherwise) font, not sans. Re-defining \DOIHeadfont here
+%% mirrors that file-load-order override.
+\def\DOIHeadfont{\fontsize{11\Q}{0\h}\selectfont}
 \def\ps@IPSJTITLEheadings{%
   \def\@oddhead{\@Ltop\rlap{\small
     \ifDS@english{\HeadfontE{\signame}}\else{\HeadfontJ{\signame}}\fi}%
