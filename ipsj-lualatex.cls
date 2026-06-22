@@ -156,8 +156,21 @@
 %% the core luatexja package already loaded above; no separate add-on
 %% package is needed.
 
-\setmainfont{TeX Gyre Termes}
-\setsansfont{TeX Gyre Heros}
+%% Deliberately NOT calling \setmainfont/\setsansfont here. The original
+%% ipsj.cls never touches \rmdefault/\sfdefault either (verified with
+%% platex: \rmdefault stays "cmr" regardless of the english/submit
+%% options) -- the Times/Helvetica look some official samples have
+%% (e.g. esample.tex) comes entirely from that *document* separately
+%% loading txfonts in its own preamble, not from the class. Baking a
+%% Times-like default in here would force every document that never
+%% asked for it into a font the original never gave it (see CLAUDE.md
+%% for the investigation). Leaving these unset means fontspec's own
+%% default applies: Latin Modern, the same "plain LaTeX" look the
+%% original defaults to absent a font package. Documents that want the
+%% Times/Helvetica look their original got via txfonts should call
+%% \setmainfont{TeX Gyre Termes}/\setsansfont{TeX Gyre Heros} themselves
+%% (see esample-lualatex.tex/ses-esample-lualatex.tex).
+%%
 %% The original's Mincho has no genuine bold shape (see CLAUDE.md): NFSS
 %% there falls back to Gothic whenever \bfseries is requested on Mincho
 %% text. Harano Aji Mincho ships a real Bold weight, so without this
@@ -810,13 +823,16 @@
 %% used by \eabstract/\ekeyword/\keyword for the *English-language
 %% block embedded in an otherwise Japanese document* (jsample.tex), so
 %% their \else branch additionally checks \ifDS@submit: with submit,
-%% the label stays bold italic in the ambient (Latin/roman, i.e. TeX
-%% Gyre Termes) font; without submit, the original explicitly forces
-%% Helvetica bold italic via \useroman{OT1}{phv}{b}{it}, which maps to
-%% \sffamily here since \sffamily already is TeX Gyre Heros. Flattening
-%% these to a single unconditional \sffamily (an earlier version of
-%% this file did) silently turned the submit+non-English "Abstract:"/
-%% "Keywords:" labels into Helvetica instead of the original's Times.
+%% the label stays bold italic in the ambient (current \rmfamily) font;
+%% without submit, the original explicitly forces Helvetica bold italic
+%% via \useroman{OT1}{phv}{b}{it}, which has no exact luatexja-fontspec
+%% equivalent (no "Helvetica" is loaded by default -- see the font setup
+%% note above), so it maps to \sffamily here: whatever the document's
+%% current sans family is (Latin Modern Sans unless the document itself
+%% called \setsansfont). Flattening these to a single unconditional
+%% \sffamily (an earlier version of this file did) silently turned the
+%% submit+non-English "Abstract:"/"Keywords:" labels sans-serif even
+%% when the original kept them in the ambient serif font.
 \def\GAIYOU{\ifDS@english
     \ifDS@abstract{\hskip1em}\else\itshape\bfseries\sffamily Abstract:\hskip.5em\fi
   \else

@@ -23,8 +23,14 @@
 
 
 
-%% txfonts is a pdfTeX-era Type1 Times-clone math package; not needed
-%% (or compatible in the same way) under LuaLaTeX, so it is dropped here.
+%% txfonts (a pdfTeX-era Type1 Times-clone package) is not usable under
+%% LuaLaTeX. ipsj-lualatex.cls itself no longer assumes any particular
+%% Latin font (it defaults to fontspec's own Latin Modern, matching the
+%% original ipsj.cls absent a font package), so the Times/Helvetica
+%% look this document's original got from txfonts is reproduced here
+%% via fontspec instead.
+\setmainfont{TeX Gyre Termes}
+\setsansfont{TeX Gyre Heros}
 
 \begin{document}
 

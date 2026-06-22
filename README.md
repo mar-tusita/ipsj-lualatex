@@ -10,7 +10,7 @@
 
 - **LuaLaTeX**（LuaHBTeX）。TeX Live 2023以降を推奨。
 - 和文フォント: **Harano Aji Mincho** / **Harano Aji Gothic**（TeX Liveに標準収録）
-- 欧文フォント: **TeX Gyre Termes** / **TeX Gyre Heros**（TeX Liveに標準収録）
+- 欧文フォントはクラス側では何も指定しません。`fontspec`の既定どおり**Latin Modern**になります（後述「フォントの指定方法」参照）
 - `luatexja`, `luatexja-fontspec`, `fontspec`（`luatexja-fontspec`が自動的に読み込みます）
 - `tombow`オプションを使う場合のみ `eso-pic`
 
@@ -83,7 +83,7 @@ lualatex main.tex
 | `\usepackage[dvips]{graphicx}` | 同上 |
 | `\usepackage[dvipdfmx,...]{hyperref}` / `\usepackage[dvipdfmx]{xcolor}` 等 | ドライバオプションを外す（`graphicx`以外でも同様） |
 | `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
-| `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1数式フォント差し替え | 削除してください（LuaLaTeXのデフォルト数式フォントで十分。互換性もありません） |
+| `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1フォント差し替え | 削除し、代わりに`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加してください（`txfonts`自体はLuaLaTeXと互換性がありませんが、それが与えていたTimes/Helvetica系の見た目は`ipsj-lualatex.cls`では再現されないため、見た目を保ちたい場合は明示的な指定が必要です。詳細は後述「フォントの指定方法」） |
 
 実際に13件の研究論文・研究報告（情報処理学会論文誌・研究会原稿・SES（ソフトウェアエンジニアリングシンポジウム）原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。詳細は[CLAUDE.md](CLAUDE.md)の6.4節を参照してください。
 
@@ -147,16 +147,23 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 
 ### 8. フォントの指定方法
 
-`\mcfamily`（明朝）/ `\gtfamily`（ゴシック）はそのまま使えます。実際の物理フォントはクラス側で
+`\mcfamily`（明朝）/ `\gtfamily`（ゴシック）はそのまま使えます。和文の実際の物理フォントはクラス側で
 
 ```latex
-\setmainfont{TeX Gyre Termes}
-\setsansfont{TeX Gyre Heros}
 \setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]
 \setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
 ```
 
 と指定しています。別のフォントに差し替えたい場合は、`\documentclass` の後で `\setmainjfont` 等を再度呼べば上書きできます（`luatexja-fontspec` の標準的な使い方です）。旧クラスにあった `JY1`/`JT1` エンコーディングや太明朝・太ゴシックの仮想フォント差し替え（`submit` オプション無指定時の「太ミン」「太ゴ」）は、上記の `BoldFont` 指定（次項参照）によって実現しています。
+
+**欧文（ラテン文字）フォントはクラス側では一切指定していません**。`\setmainfont`/`\setsansfont`を呼んでいないため、`fontspec`の既定どおり**Latin Modern**（Computer Modernの直接の後継。見た目はほぼ同一）になります。これは手抜きではなく、原文`ipsj.cls`自体の挙動を調べた結果に基づく意図的な選択です。`ipsj.cls`は`\rmdefault`/`\sfdefault`を一切書き換えておらず（`platex`で実際に確認済み）、ラテン文字フォントの選択は完全にドキュメント側に委ねられています。情報処理学会公式サンプルのうち和文モードのもの（`jsample.tex`等）はラテン文字用フォントパッケージを何も読み込んでおらず、実際にComputer Modernで組まれています。一方、英文モードのサンプル（`esample.tex`/`ses-esample.tex`）がTimes/Helvetica系に見えるのは、**そのドキュメント自身**が`\usepackage[varg]{txfonts}`（pLaTeX/pdfTeX時代のPostScriptフォントパッケージ。LuaLaTeXでは使えません）を独自に読み込んでいたからです。
+
+したがって、Times/Helvetica系の見た目が欲しい場合は、`txfonts`を読んでいた原稿だったときと同様に、**ご自身のプリアンブルで**`fontspec`経由で明示的に指定してください（本リポジトリの`esample-lualatex.tex`/`ses-esample-lualatex.tex`も、削除した`txfonts`の代わりにこの方法でTimes/Helvetica系を再現しています）。
+
+```latex
+\setmainfont{TeX Gyre Termes}  % Times相当
+\setsansfont{TeX Gyre Heros}   % Helvetica相当
+```
 
 **太字明朝とゴシックの代用について**：原文`ipsj.cls`が前提としていた和文フォント環境には明朝の太字（Bold）シェイプが無く、`\bfseries`は自動的にゴシックで代用されていました（和文組版の古くからの慣習）。代用先は「太いゴシック」ではなく、当時のゴシック書体が標準として持っていた唯一のウェイトである**Medium**で、ゴシック自体をボールド化する処理は行われていませんでした。本クラスが採用する Harano Aji Mincho/Gothic はいずれも本物の Bold ウェイトを持つため、対策なしでは見出し・概要ラベル・図表番号や、原稿中で直接`\textbf{和文}`と書いた箇所などが原文と異なる太字明朝・太字ゴシックで出てしまいます。これを避けるため、`\setmainjfont`/`\setsansjfont`の`BoldFont`オプションで「明朝・ゴシックいずれの太字も`Harano Aji Gothic Medium`に切り替える」という代用規則自体をフォント宣言レベルで定義しています。この方式により、クラス内部の処理だけでなく、**原稿中で直接`\bfseries`や`\textbf{}`を使った場合も**自動的に原文と同じ見た目（太字ゴシック、ただしMediumウェイト）になります。
 

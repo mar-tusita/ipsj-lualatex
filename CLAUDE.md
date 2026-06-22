@@ -46,12 +46,12 @@
 ```latex
 \RequirePackage{luatexja}
 \RequirePackage{luatexja-fontspec}
-\setmainfont{TeX Gyre Termes}
-\setsansfont{TeX Gyre Heros}
-\setmainjfont{Harano Aji Mincho}
-\setsansjfont{Harano Aji Gothic}
+\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]
+\setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
 \renewcommand{\kanjifamilydefault}{\mcdefault}
 ```
+
+**欧文（ラテン文字）側に`\setmainfont`/`\setsansfont`を呼んでいないのは意図的である**。当初は`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`をクラス側に常時設定していたが、§4.31の調査で「原文`ipsj.cls`自身はラテン文字フォントを一切固定していない（`\rmdefault`/`\sfdefault`を触らず、`platex`で実測しても`english`オプションの有無に関わらず常に`cmr`/`cmss`のまま）。`esample.pdf`等がTimes/Helvetica系に見えるのは、クラスではなく**ドキュメント側**が独自に`\usepackage[varg]{txfonts}`を読み込んでいたから」と判明したため、クラス側の固定指定を撤回した。和文（Mincho/Gothic）側は逆に**原文が常に実フォントへ明示的に切り替えている**（`submit`の有無によらず`\usefont{JY1}{...}`系の呼び出しが必ず行われる）ため、`\setmainjfont`/`\setsansjfont`は引き続きクラス側で固定している。詳細な経緯は§4.31を参照。
 
 - `luatexja-tate` という名前のアドオンパッケージは**存在しない**（TeX Live 2026時点）。`\tate`/`\yoko` は `luatexja-core.sty` が直接提供しており、`\RequirePackage{luatexja}` だけで使える。これは `ltjtarticle.cls`（LuaTeX-ja公式の縦組クラス）の実装を確認して判明した（`\DeclareOption{tate}{\tate ...}` を `\RequirePackage{luatexja}` のみで実行している）。
 - フォントは `texlive/texlive:latest`（TeX Live 2026）に標準収録されているものを選定。`fc-list` で確認した結果：
@@ -69,12 +69,14 @@
 - **`Noto Sans/Serif CJK JP`を選ばなかった理由**：これは前述の通り`Harano Aji`と**同じ「源ノ」字形デザイン**を採用したフォントであり、見た目の差はほぼ無い。選ばなかった理由は字形デザインではなく実務上の理由のみ：標準的なTeX Live配布物には同梱されておらず、`luatexja-fontspec`から使うにはシステムへの別途インストールが必要になり、「追加インストール不要」という本プロジェクトの要件（README §必要環境）に反する。また、AJ1字形順への変換が施されていないため、伝統的なCID-keyed和文フォント周りの処理（dvipdfmx経由の出力等）との相性は`Harano Aji`の方が確実である。
 - **いずれを選んでも、`ipsj.cls`本来が前提としていたRyumin-Light/GothicBBB-Medium（商用、森澤由来）の書体デザインそのものとは一致しない**：これは本プロジェクトが許容する既知の限界であり、フォントを変更した時点で避けられない差である（TeX Gyre Termes/HeroesとTimes/Helveticaの関係も同様、後述）。
 
-欧文（Times/Helvetica相当）について：
+欧文（ラテン文字）について：
 
-- **原文`ipsj.cls`が前提としていた具体的なフォントの正体**：`ipsj.cls`を`grep`すると、ヘッダ・タイトル等のラテン文字部分で`\usefont{OT1}{ptm}{m}{n}%Times`（1441, 1455, 1899, 1905行目等）、`\usefont{OT1}{ptm}{b}{n}%Times-Bold`（2762, 2768行目）、`\usefont{OT1}{phv}{b}{n}`（1198, 2983, 3075行目）が多数使われている。`ptm`/`phv`はPSNFSS（dvips時代のPostScriptフォント切り替え機構）における**Times（Nimbus Roman系）/Helvetica（Nimbus Sans系）の標準識別子**であり、コメントにも明示的に「Times」と書かれている。さらに5236行目には`%%\AtBeginDocument{\RequirePackage{txfonts}}`という、Times/Helvetica互換のPostScriptフォントパッケージ`txfonts`を読み込む処理がコメントアウトで残っている。これらから、`ipsj.cls`の原作者はラテン文字部分に明確に**Times（本文）/Helvetica（見出し等のサンセリフ）**を意図していたことが分かる（Computer Modernではない）。
-- **`TeX Gyre Termes`/`TeX Gyre Heros`を選んだ理由**：これらはGUST e-foundryプロジェクトによる、`txfonts`の基盤と同じ**URW Nimbus Roman/Nimbus Sans**（Times/Helvetica互換のPostScriptフォント）をOpenType化し、`fontspec`/`luatexja-fontspec`から直接使えるよう整備したものである。`txfonts`（Type1 PostScriptフォント）はLuaLaTeXの`fontspec`ベースのフォント選択とは相性が悪く直接使えないため、**同じ字形系列を保ったままOpenType・fontspec対応にした後継**として最適だった。Regular/Bold/Italic/BoldItalicを完備しており、§4.16のような「ウェイトが足りないことによる予期しない代替」のリスクも無い。
-- **`Latin Modern`（LuaLaTeXの既定フォント）を選ばなかった理由**：何も指定しなければLuaLaTeXは`Latin Modern`（Computer Modernの後継）を使うが、これは原文`ipsj.cls`が前提とするTimes/Helvetica系の見た目とは明確に異なる「TeX標準書体」の外観であり、学術論文ヘッダー等の見た目が原文と大きく変わってしまうため採用しなかった。
-- **`Liberation Serif/Sans`等の他のTimes/Helvetica互換クローンを選ばなかった理由**：TeX Gyreと同様にTimes/Helvetica互換だが、TeX LiveにおけるOpenType・`fontspec`対応の完成度・収録の安定性でTeX Gyreの方が標準的であり、`luatexja-fontspec`の公的なドキュメント・サンプルでも欧文側の組み合わせとして例示されているため、実績のあるTeX Gyreを選んだ。
+**この項は当初「原文はTimes/Helveticaを前提としている」という誤った前提のもとに書かれており、§4.31の調査で誤りが判明したため全面的に書き換えた。誤っていた当初の判断の詳細は§4.31を参照。**
+
+- **原文`ipsj.cls`が実際に前提としていたフォント**：`ipsj.cls`単体を`grep`すると、ヘッダ・タイトル等の一部のラテン文字部分で`\usefont{OT1}{ptm}{m}{n}%Times`（1441, 1455, 1899, 1905行目等）、`\usefont{OT1}{ptm}{b}{n}%Times-Bold`（2768行目）、`\usefont{OT1}{phv}{b}{n}`（1198, 2983, 3075行目）が使われており、一見Times/Helveticaを前提としているように見える。しかし§4.31で全呼び出し箇所を精査した結果、これらは**`\if@submit`の`\else`分岐（=`submit`オプション**未**指定、すなわち学会側が版組みする最終版）でのみ有効になるものが大半**であり、`submit`指定時（投稿原稿）は同じ箇所が`\usefont`呼び出しを伴わない`\bfseries`/`\normalfont`等（＝**現在のアンビエントなラテン文字フォント**に委ねる）になっている。さらに本文の`\normalsize`等は和文・英文どちらのモードでもラテン文字フォントを一切切り替えない。`platex`で実際に検証した結果、`\rmdefault`/`\sfdefault`は`english`オプションの有無に関わらず常に`cmr`/`cmss`（Computer Modern）のままだった。つまり**原文`ipsj.cls`自身は、`submit`指定時を含む大部分の場面でラテン文字フォントを一切指定しておらず、LaTeX標準のComputer Modernのままになる**。
+- **`esample.pdf`がTimes/Helvetica系に見える本当の理由**：`esample.tex`（ドキュメント自身）が独自に`\usepackage[varg]{txfonts}`を読み込んでいたため。`txfonts`は`\rmdefault`/`\sfdefault`をTimes/Helvetica互換のURW Nimbus Roman/Sansへ書き換えるパッケージであり、これは**クラスの仕様ではなくドキュメント側の選択**である。実際に`esample.tex`から`txfonts`の読み込みを取り除いてplatexでコンパイルしたところ、タイトル・本文ともComputer Modernになることを確認した（§4.31）。
+- **クラス側で`\setmainfont`/`\setsansfont`を呼ばないことにした理由**：上記の通り、原文の忠実な再現は「クラスが何かを強制する」ことではなく「クラスは何も強制せず、ドキュメントが`txfonts`を読むかどうかに委ねる」ことだとわかった。そのため`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`をクラスから削除し、`fontspec`の既定動作（未設定時はLatin Modernを使う。Computer Modernの直接の後継で、見た目はほぼ同一）に委ねることにした。これにより、`txfonts`を読んでいなかった原稿（`jsample.tex`を含む大多数の和文`submit`論文）は原文と同じComputer Modern系の見た目になり、`txfonts`を読んでいた原稿（`esample.tex`/`ses-esample.tex`）は、その2文書の移植版（`esample-lualatex.tex`/`ses-esample-lualatex.tex`）側に`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加することで、原文と同じTimes/Helvetica系の見た目を再現している。
+- **`TeX Gyre Termes`/`TeX Gyre Heros`という選択自体は維持した**：`txfonts`を読んでいた原稿側でTimes/Helvetica系を再現する際の具体的なフォントとしては、引き続きこれらを使う。理由は当初の判断と同じで、`txfonts`の基盤と同じURW Nimbus Roman/Nimbus SansをOpenType化し`fontspec`から直接使えるようにした後継であり、Regular/Bold/Italic/BoldItalicを完備しているため。
 
 ### 2.3 ページジオメトリ：A4固定の根拠
 
@@ -615,7 +617,7 @@
 
 **発見の経緯**：まず最小再現（`[submit,ses,english]`で簡単な`\title`＋`\section`のみの文書）を作成したところ`\bfseries`は正常に効いたため、クラス自体（`ipsj-lualatex.cls`）のSESモード分岐に問題は無いと判断した。次に実際の`ses-esample-lualatex.tex`の差分を原文と比較する中で、§6.3の移植手順チェックリストの中の「`txfonts`除去」の項目がこのファイルだけ未実施だったことに気づいた。
 
-**対処**：`esample-lualatex.tex`で既に行っていたのと同じ要領で、`\usepackage[varg]{txfonts}`等の4行を削除し、「pdfTeX時代のパッケージなので不要」という説明コメントに置き換えた。
+**対処**：`esample-lualatex.tex`で既に行っていたのと同じ要領で、`\usepackage[varg]{txfonts}`等の4行を削除し、「pdfTeX時代のパッケージなので不要」という説明コメントに置き換えた。（**追記（§4.31で方針変更）**：この時点では「削除するだけでよい」という判断だったが、§4.31の調査で`txfonts`が提供していたTimes/Helvetica系の見た目自体は意図的なものだったと判明したため、後日この削除箇所に`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加し直した。`esample-lualatex.tex`も同様。）
 
 **結果**：`ses-esample-lualatex.pdf`は8ページ→**7ページ**（原文`ses-esample.pdf`と完全一致）に変化し、タイトル・各見出し・`Abstract:`が正しく太字で表示されるようになった。§6.5の検証結果テーブルを「8/7（構造一致、フォントメトリクス差）」から「7/7（完全一致）」に更新した。すなわち、§6.5で当時「既知のフォントメトリクス差」として受け入れていた1ページ差は、実際には**クラスの問題ではなくテスト文書側の移植手順漏れ**が原因だったことになる。
 
@@ -692,6 +694,33 @@
 
 **教訓**：`\EGAIYOU`/`\EKEYWORD`は「和文モードの文書に埋め込まれた英文セクション専用」という特殊な立ち位置のマクロで、`\GAIYOU`/`\JKEYWORD`（和文・英文どちらのモードでも共有される環境用）とは分岐の意味が異なる（`\ifDS@english`そのものではなく、その否定分岐の中で**さらに別の条件**`\if@submit`を見る）。両者が似た名前・似た構造を持つために「`\GAIYOU`の方は分岐を保ったから`\EGAIYOU`も同じだろう」とは限らず、それぞれの呼び出し元（`\abstract`/`\jkeyword`は和文・英文共通、`\eabstract`/`\ekeyword`/`\keyword`は和文文書内の英文セクション専用）を1つずつ確認しないと、どちらの`\ifDS@english`分岐がどちらの意味を持つかを誤認しやすい。また、簡略化した2つの定義が**たまたま同じ値に収束する**と、片方（`esample.tex`等）では問題が顕在化せず、もう片方（`jsample.tex`）でだけ見える、という発見しにくいバグになる。
 
+### 4.31 ラテン文字フォントをクラスがTimes/Helveticaに固定していたのは誤りで、原文はComputer Modernが既定だった（アーキテクチャ変更、重要）
+
+**症状**：ユーザーが§4.30の調査の延長で、`jsample.pdf`と`jsample-lualatex.pdf`の英文タイトル"How to Prepare Your Paper for IPSJ Journal"を見比べ、どちらもTimes系の字形だが移植版の方が太すぎる（weightが大きすぎる）と指摘した。
+
+**調査**：`pdfminer.six`で両PDFの該当テキストの実際の埋め込みフォントを直接調べたところ、`jsample.pdf`（原文）のタイトルは`CMBX12`（**Computer Modern** Bold Extended）であり、Times系のフォントは一切使われていないことが判明した。本文（Abstract:パラグラフ）や著者名も同様に`CMR10`/`CMBXTI10`/`CMCSC10`等、すべてComputer Modern系だった。一方、比較対象として`esample.pdf`（英文モード）の同じ要素を調べると、こちらは`NimbusRomNo9L-Medi`（本物のTimes系、Medium相当）が使われていた。
+
+`ipsj.cls`本体を全文精査した結果、ラテン文字フォントを実際に明示的に切り替えている箇所（`\usefont{OT1}{ptm/phv}{...}`系）は、ほぼ全て**`\if@submit`が偽（`submit`未指定＝学会側が版組みする最終版用）のときだけ**有効になる分岐の中にあり、`submit`指定時（投稿原稿、`jsample.tex`を含む本プロジェクトのテスト文書群が使う設定）は同じ箇所が`\bfseries`/`\normalfont`等、**現在のアンビエントなラテン文字フォントに委ねる**コードになっていた。さらに本文用の`\normalsize`等はラテン文字フォントを一切切り替えない。`platex`で実際にデバッグ出力（`\typeout{\rmdefault}`）を行って検証したところ、`\rmdefault`/`\sfdefault`は`english`オプションの有無にかかわらず常に`cmr`/`cmss`（Computer Modern系）のままだった。
+
+では`esample.pdf`がTimes系に見えるのはなぜか。原因は`esample.tex`（**ドキュメント自身**）が独自に
+
+```latex
+\usepackage[varg]{txfonts}%%!!
+\makeatletter%
+\input{ot1txtt.fd}
+\makeatother%
+```
+
+を読み込んでいたことだった（`ipsj-lualatex.cls`への移植時にはLuaLaTeXで使えないため削除するよう案内していた箇所、§6.3手順3、§4.27参照）。`txfonts`は`\rmdefault`/`\sfdefault`をTimes/Helvetica互換のURW Nimbus Roman/Sansへ書き換えるパッケージであり、これはクラスの挙動ではなく**ドキュメント側の選択**である。実際に`esample.tex`から`txfonts`の読み込み行だけを取り除いてplatexで再コンパイルしたところ、タイトル・本文ともComputer Modern（`CMBX12`/`CMR10`/`CMSSBX10`）になることを確認した。`ipsj.cls`本体・`ipsjpref.sty`・`ipsjtech.sty`をすべて`grep`しても`\renewcommand{\rmdefault}`等の類は一切無く、ラテン文字フォントの選択は完全にドキュメント側に委ねられている。
+
+**つまり`ipsj.cls`は「和文はクラスが明示的にMincho/Gothicへ切り替える、欧文はクラスが何も決めずComputer Modernのまま（ドキュメントが独自に`txfonts`等を読めばそれに従う）」という設計だった。** `ipsj-lualatex.cls`は当初（§2.2）、原文の一部の`\usefont{OT1}{ptm/phv}...}`呼び出しだけを見て「原文はTimes/Helveticaを前提としている」と誤って結論し、`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`をクラス側に常時設定していた。この結果、`txfonts`を読んでいなかった大多数の和文`submit`論文（`jsample.tex`はじめ、本プロジェクトの実文書テスト13件は全て`txfonts`等を読んでいないことを確認済み）で、原文のComputer Modernをすべて無条件にTeX Gyre Termes/Herosへ置き換えてしまっていた。`esample.tex`/`ses-esample.tex`（`txfonts`を読んでいた2文書）だけは偶然見た目が一致していたため、この問題はこれまで発覚しなかった。
+
+**対処**：`ipsj-lualatex.cls`から`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を削除した。`fontspec`はこれらが未設定の場合、既定でLatin Modern（Computer Modernの直接の後継、見た目はほぼ同一でOpenType対応）を使うため、何もしなければ原文のComputer Modernと一致する見た目になる。`txfonts`を読んでいた2文書（`esample-lualatex.tex`/`ses-esample-lualatex.tex`）には、削除した`txfonts`の代わりに`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`をドキュメント側のプリアンブルに追加し、`fontspec`経由で同じTimes/Helvetica系の見た目を再現するようにした。和文側の`\setmainjfont`/`\setsansjfont`（Harano Aji Mincho/Gothic）は変更していない——和文は原文が常に明示的に実フォントへ切り替えるため、この非対称性自体が原文の設計を反映している。
+
+**結果**：5公式サンプル＋実文書13件、合計18件すべてを再コンパイルした。17件はページ数に変化なし（9/8/6/6/7、10/6/9/9/8/9/9/13/8/9/8/8/2）。`tyngtmyn_202403_sigse-main`のみ8→9ページに変化したが、原文（8ページ）と比較したところ、参考文献リストの最後の1件（[12]）だけが新しいほぼ空白の9ページ目に押し出されただけで、内容の欠落・重複は無く、§4.14/§4.17/§4.23と同種の「フォントメトリクス差による末尾の押し出し」と判断した（フォント自体をLatin ModernからTeX Gyre Termesへ戻すよりも、原文に忠実な既定フォントを優先する判断）。`jsample-lualatex.pdf`のタイトル・Abstract:・著者名を`pdfminer`で再確認し、`LMRoman12-Bold`/`LMRoman9-Regular`/`LMRomanCaps10-Regular`等（Latin Modern、Computer Modernの後継）になったことを確認した。`esample-lualatex.pdf`は引き続き`TeXGyreTermes-Bold`等になることを確認し、変化なし。
+
+**教訓**：`grep`で見つかった`\usefont{OT1}{ptm}...}`等の存在だけを見て「原文はこのフォントを前提としている」と判断したのが誤りの根本だった。実際にはその呼び出しが**どの条件分岐の中にあるか**（`\if@submit`の真偽どちらの枝か）まで確認する必要があり、さらにクラスとドキュメントのどちらがその選択をしているのかも区別する必要があった（`txfonts`は`esample.tex`というドキュメントの選択であり、`ipsj.cls`というクラスの選択ではない）。`platex`で実際にコンパイルして`\rmdefault`の値や埋め込みフォント名を直接確認するという、推測に頼らない実証的な検証手段に切り替えたことで初めて誤りに気づけた。また、この誤りが1年近い開発期間中ずっと見つからなかった理由は、**たまたま検証に使っていた`esample.tex`が`txfonts`を読んでいたため、誤った「クラスがTimesを強制する」実装でも偶然正しい見た目になっていた**ことに起因する——`txfonts`を読んでいない`jsample.tex`側でユーザーが具体的な字形の違和感（「太すぎる」）を指摘するまで、発覚の機会が無かった。
+
 ## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書（ユーザー提供の実論文1件を移植したもの、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -755,7 +784,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 
 1. `\documentclass[...]{ipsj}` → `\documentclass[...]{ipsj-lualatex}`
 2. `\usepackage[dvipdfmx]{graphicx}` / `\usepackage[dvips]{graphicx}` → `\usepackage{graphicx}`
-3. `\usepackage[varg]{txfonts}` と続く `\makeatletter \input{ot1txtt.fd} \makeatother` を削除する
+3. `\usepackage[varg]{txfonts}` と続く `\makeatletter \input{ot1txtt.fd} \makeatother` は、LuaLaTeXでは直接使えないので削除するが、**単に削除するだけでは見た目が変わる**（§4.31参照：`ipsj-lualatex.cls`自身はラテン文字フォントを固定していないため、`txfonts`はそのドキュメントがTimes/Helvetica系の見た目を得る唯一の手段だった）。削除した代わりに `\setmainfont{TeX Gyre Termes}` / `\setsansfont{TeX Gyre Heros}` をプリアンブルに追加し、同じ見た目を`fontspec`経由で再現すること
 4. `\usepackage[dvipdfmx,...]{hyperref}` や `\usepackage[dvipdfmx]{xcolor}` など、`graphicx` 以外のパッケージに付いている `dvipdfmx`/`dvips` ドライバオプションも同様に削除する（§6.4参照）
 5. `\usepackage{pxjahyper}` を使っている場合は削除する（§6.4参照）
 6. ソース中の「`<数値>zw`」「`<数値>zh`」を全て「`<数値>\zw`」「`<数値>\zh`」に変換する（`grep -n '[0-9.]zw[]}]'` 等で検出できる）。`\lstset{...}` の `xleftmargin`/`xrightmargin`/`numbersep` 等の寸法キーも例外ではなく変換が必要（§6.6参照。`caption=`等の文字列系キーは無関係）
