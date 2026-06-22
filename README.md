@@ -85,7 +85,7 @@ lualatex main.tex
 | `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
 | `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1フォント差し替え | 削除し、代わりに`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加してください（`txfonts`自体はLuaLaTeXと互換性がありませんが、それが与えていたTimes/Helvetica系の見た目は`ipsj-lualatex.cls`では再現されないため、見た目を保ちたい場合は明示的な指定が必要です。詳細は後述「フォントの指定方法」） |
 
-実際に13件の研究論文・研究報告（情報処理学会論文誌・研究会原稿・SES（ソフトウェアエンジニアリングシンポジウム）原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。詳細は[CLAUDE.md](CLAUDE.md)の6.4節を参照してください。
+実際に13件の研究論文・研究報告（情報処理学会論文誌・研究会原稿・SES（ソフトウェアエンジニアリングシンポジウム）原稿）を移植して動作確認した結果、`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。
 
 ### 4. 用紙サイズオプションの廃止（重要）
 
@@ -197,4 +197,8 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 - `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、原文との画素単位の比較による検証はできていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
 - `\cite`の引用番号自動ソートは、`esample-lualatex.tex`の複数引用（`\cite{companion,latex}`）で動作することを視認しましたが、並べ替えが実際に発生するケース（番号が逆順または不連続な複数引用）はテスト文書群に無く、ソート処理自体は未検証です。
 
-詳細な技術的決定の根拠・移植作業の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
+## 開発・検証の方針
+
+本クラスは、`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses.sty`のソースコードを直接読み比べながら実装し、情報処理学会公式サンプル（`jsample`/`esample`/`tech-jsample`）に加え、実際に投稿された論文・研究報告（公開はしていません）多数を使って、pLaTeXでビルドした元のPDFと画素単位で比較する形で検証しています。和文フォントには情報処理学会公式サンプルのPDFも既に使用している `Harano Aji Mincho`/`Harano Aji Gothic` をそのまま採用しているため、和文部分の字体は原文とほぼ完全に一致します。
+
+その一方で、LuaLaTeX（LuaTeX-ja）とpLaTeXでは行送り・改ページの計算がエンジンレベルでわずかに異なるため、原稿によっては最終的なページ数が元のpLaTeX版と1ページ程度ずれることがあります。これは検証の過程で繰り返し確認しており、内容の欠落・崩れではなく、ページ内の余白の配分がわずかに変わることによる無害な差です。逆に、ページ数が大きくずれる・図表が消える・文字が異常な書体になるといった症状は、本クラス側の変換ミスである可能性が高いので、ぜひ報告してください。
