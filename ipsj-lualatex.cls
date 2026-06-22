@@ -193,6 +193,35 @@
 \setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
 \renewcommand{\kanjifamilydefault}{\mcdefault}
 
+%% A handful of original macros force a *specific* font regardless of
+%% whatever the document's ambient family is, instead of going through
+%% \rmfamily/\sffamily/\mcfamily/\gtfamily (which now follow whatever
+%% the document itself requested, or fontspec's Latin Modern default --
+%% see the font-setup note above). These dedicated families exist only
+%% for those call sites; they must NOT be affected by a document's own
+%% \setmainfont/\setsansfont, and (for the kanji ones) must bypass the
+%% Medium-substitution \setmainjfont/\setsansjfont apply to \bfseries.
+%%
+%% - \labelfont (original: \useroman{OT1}{cmr}{m}{n}, always plain
+%%   Computer Modern Roman regardless of \if@submit/\ifDS@english/any
+%%   document-level font package) -- used for the superscript
+%%   affiliation-number markers after author names.
+%% - \ipsj@nonsubmittimes (original: bare \usefont{OT1}{ptm}{b}{n}, an
+%%   *active*, not commented-out, explicit Times-Bold selection) -- used
+%%   by \bothashira/\botnomble/\jtitlefont's non-\if@submit branches
+%%   (the IPSJ-typeset camera-ready path, vs. the submit/draft path
+%%   most authors actually use).
+%% - \ipsj@FutoMin/\ipsj@FutoGoth (original: \usefont{JY1}{fmb/fgb}{m}
+%%   {n}, the "太明/太ゴ" virtual bold-look fonts used only for
+%%   \jtitlefont/\SHUBETUfontJ's non-\if@submit branches) -- declared
+%%   with no BoldFont override of their own, so \bfseries on them finds
+%%   Harano Aji Mincho/Gothic's *genuine* Bold face, not the Medium that
+%%   \setmainjfont/\setsansjfont substitute everywhere else.
+\newfontfamily\ipsj@cmrlabel{Latin Modern Roman}
+\newfontfamily\ipsj@nonsubmittimes{TeX Gyre Termes}
+\newjfontfamily\ipsj@FutoMin{Harano Aji Mincho}
+\newjfontfamily\ipsj@FutoGoth{Harano Aji Gothic}
+
 \ifDS@tate
   \AtBeginDocument{\tate}
 \fi
@@ -634,16 +663,49 @@
 \def\DOIHeadfont{\fontsize{11\Q}{0\h}\sffamily\selectfont}
 
 \def\SHUBETUfontE{\fontsize{18\Q}{0\h}\bfseries\selectfont}
-\def\SHUBETUfontJ{\fontsize{18\JQ}{0\h}\gtfamily\mdseries\selectfont}
+%% \if@submit (the original's name; \ifDS@submit here): the IPSJ-typeset
+%% camera-ready path (\else) uses "太ゴB101" (FutoGoB, a dedicated bold-
+%% look Gothic font, not Gothic-made-bold) for this label -- see
+%% \ipsj@FutoGoth above.
+\def\SHUBETUfontJ{\ifDS@submit
+    \fontsize{18\JQ}{0\h}\gtfamily\mdseries\selectfont
+  \else
+    \fontsize{18\JQ}{0\h}\ipsj@FutoGoth\bfseries\selectfont
+  \fi}
 
-\def\bothashira{\fontsize{10\Q}{0\h}\normalfont\selectfont}
-\def\botnomble{\fontsize{13\Q}{0\h}\normalfont\selectfont}
+\def\bothashira{\ifDS@submit
+    \fontsize{10\Q}{0\h}\normalfont\selectfont
+  \else
+    \fontsize{10\Q}{0\h}\ipsj@nonsubmittimes\selectfont
+  \fi}
+\def\botnomble{\ifDS@submit
+    \fontsize{13\Q}{0\h}\normalfont\selectfont
+  \else
+    \fontsize{13\Q}{0\h}\ipsj@nonsubmittimes\selectfont
+  \fi}
 
-\def\jtitlefont{\fontsize{26\JQ}{34\h}\gtfamily\bfseries\mathversion{bold}\selectfont}
-\def\juketukefont{\fontsize{10\JQ}{12\h}\normalfont\selectfont}
+%% Non-submit (camera-ready) branch: kanji switches to "太明" (FutoMin,
+%% a dedicated bold-look Mincho font -- see \ipsj@FutoMin above), Latin
+%% text to an explicit (not commented out, unlike most other \usefont
+%% calls in the original) Times-Bold.
+\def\jtitlefont{\ifDS@submit
+    \fontsize{26\JQ}{34\h}\gtfamily\bfseries\mathversion{bold}\selectfont
+  \else
+    \fontsize{26\JQ}{34\h}\ipsj@FutoMin\ipsj@nonsubmittimes\bfseries
+    \mathversion{bold}\selectfont
+  \fi}
+\def\juketukefont{\ifDS@submit
+    \fontsize{10\JQ}{12\h}\normalfont\selectfont
+  \else
+    \fontsize{10\JQ}{12\h}\gtfamily\sffamily\mdseries\selectfont
+  \fi}
 \def\etitlefont{\fontsize{20\Q}{22\h}\mathversion{bold}\selectfont}
-\def\euketukefont{\fontsize{10\JQ}{12\h}\normalfont\selectfont}
-\def\labelfont{\rmfamily\selectfont}
+\def\euketukefont{\ifDS@submit
+    \fontsize{10\JQ}{12\h}\normalfont\selectfont
+  \else
+    \fontsize{10\JQ}{12\h}\sffamily\mdseries\selectfont
+  \fi}
+\def\labelfont{\ipsj@cmrlabel\selectfont}
 \def\authorfont{\fontsize{16\JQ}{22\h}\selectfont}
 \def\eauthorfont{\fontsize{14\JQ}{18\h}\scshape\selectfont}
 \def\Engeauthorfont{\fontsize{17\JQ}{22\h}\scshape\selectfont}
@@ -1336,6 +1398,19 @@
 %% requests otherwise) font, not sans. Re-defining \DOIHeadfont here
 %% mirrors that file-load-order override.
 \def\DOIHeadfont{\fontsize{11\Q}{0\h}\selectfont}
+%% ipsjtech.sty's \HeadfontE similarly drops \sffamily from its
+%% non-English branch (ipsj.cls's own \HeadfontE is \sffamily in all
+%% three of its \ifDS@english/\if@submit branches; ipsjtech.sty's
+%% \else branch is \bfseries alone). Neither this class's own techrep
+%% page style nor ses.sty's ever actually calls \HeadfontE under
+%% \ifDS@english-false, so this has no observed visual effect in any
+%% test document, but is kept for fidelity with the original's
+%% file-load-order override.
+\def\HeadfontE{\ifDS@english
+    \fontsize{13\Q}{0\h}\sffamily\bfseries\selectfont
+  \else
+    \fontsize{13\Q}{0\h}\bfseries\selectfont
+  \fi}
 \def\ps@IPSJTITLEheadings{%
   \def\@oddhead{\@Ltop\rlap{\small
     \ifDS@english{\HeadfontE{\signame}}\else{\HeadfontJ{\signame}}\fi}%

@@ -749,6 +749,36 @@
 
 **教訓**：同名のマクロが複数のファイル（`ipsj.cls`本体／`ipsjpref.sty`／`ipsjtech.sty`）で別々に定義され、`\input`の実行順で後から上書きされる、という原文の構造（§1.1）は、`\@maketitle`/`\authortitle`等の大きなマクロだけでなく、`\DOIHeadfont`のような小さな1行のフォントマクロにも及んでいた。`ipsj.cls`本体だけを見て「`\DOIHeadfont`はこういうものだ」と判断するのは不十分で、`techrep`/`preface`関連のマクロは必ず`ipsjtech.sty`/`ipsjpref.sty`側にも同名の再定義が無いかを確認する必要がある。さらに今回も§4.27/§4.30/§4.31と同じパターン——**コメントアウトされた`\usefont`呼び出しを「使うつもりだったのだろう」と早合点して有効化してしまう**——が、ファイルをまたいだ定義の違いという形で再発した。
 
+### 4.33 フォント選択コードの全面再点検（§4.16〜§4.32の延長、複数の追加バグを発見・修正）
+
+§4.16/§4.21/§4.27/§4.28/§4.30/§4.31/§4.32と、フォント選択関連の不具合が繰り返し見つかったため、ユーザーから「`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses.sty`のフォント選択に関わるコードを全面的に再点検してほしい」という依頼を受けた。`\def\.*[Ff]ont` で全ファイルの「フォントマクロ」を機械的に列挙し、`\usefont`/`\useroman`/`\usekanji`/`\sffamily`/`\scshape` 等のフォント切替命令を1つずつ`grep`し、原文の分岐構造と`ipsj-lualatex.cls`の対応箇所を1つずつ突き合わせた。
+
+**発見した追加の不一致**（いずれも既知のパターン——`\if@submit`/`\ifDS@english`分岐の一部だけを移植して残りを切り落とす——の再発）：
+
+1. **`\SHUBETUfontJ`**（論文種別ラベルの和文フォント）：`submit`分岐（`\gtfamily\mdseries`、Gothic Medium）のみ実装されており、非`submit`分岐（原文では`\usefont{JY1}{fgb}{m}{n}`＝「太ゴB101」(FutoGoB)という太く見える専用ゴシック書体）が欠落していた。
+2. **`\bothashira`/`\botnomble`**（フッタの学会名・ページ番号用フォント）：`submit`分岐（`\normalfont`）のみで、非`submit`分岐（原文では**コメントアウトされていない、有効な**`\usefont{OT1}{ptm}{m}{n}`＝Times明示指定）が欠落していた。
+3. **`\jtitlefont`**（和文タイトルのフォント）：`submit`分岐（`\gtfamily\bfseries`）のみで、非`submit`分岐（原文では和文側「太明」(FutoMin、太く見える専用明朝書体)＋欧文側の有効な`\usefont{OT1}{ptm}{b}{n}`＝Times-Bold明示指定）が欠落していた。
+4. **`\juketukefont`/`\euketukefont`**（受付・採録日のフォント）：`submit`分岐（`\normalfont`）のみで、非`submit`分岐（原文では`\usekanji{JY1}{gt}{m}{n}`＋`\useroman{OT1}{phv}{m}{n}`＝Gothic Medium＋Helvetica Medium）が欠落していた。
+5. **`\labelfont`**（著者所属番号の上付き文字フォント）：原文は`\useroman{OT1}{cmr}{m}{n}`で**`submit`/`english`を問わず常に**Computer Modern Romanへ明示的に固定していたが、移植版は`\rmfamily`（現在のアンビエントなラテン文字フォントに追従するだけ）になっていた。§4.31でクラスがラテン文字フォントを固定しないよう変更した結果、`txfonts`等を読み込むドキュメントでは`\labelfont`もそれに引き込まれてしまう状態だった（`\elabelfont`は原文どおり`\normalfont`なので無関係。`\labelfont`は和文モードの`\authoroutput{}`専用で、本プロジェクトのテスト文書群はいずれも和文モードでは`txfonts`等を読んでおらず、視覚的な差としては未検証）。
+6. **`\HeadfontE`**：§4.32で発見した`\DOIHeadfont`と同型のファイル間上書き漏れ。`ipsjtech.sty`は`\ifDS@english`偽の分岐から`\sffamily`を落としている（`ipsj.cls`本体は3分岐とも`\sffamily`）。ただし原文を全箇所`grep`した限り、`techrep`モードでこの偽分岐が実際に呼ばれる場所が無く（`ipsjtech.sty`/`ses.sty`いずれの`\ps@IPSJTITLEheadings`も、和文ブランチでは`\HeadfontJ`を使い`\HeadfontE`を呼ばない）、視覚的な影響は無いと判断したが、§4.32の教訓（同名マクロのファイル間上書き）との一貫性のため修正した。
+
+**対処**：いずれも原文の`\if@submit`（移植先`\ifDS@submit`）分岐をそのまま復元した。原文の非`submit`分岐は「アンビエントなフォントではなく特定の物理フォントを明示的に強制する」ものが多く、本クラスの`\setmainjfont`/`\setsansjfont`によるMedium置換（§4.28）やドキュメント側の任意のフォント選択（§4.31）を迂回する必要があったため、専用の`fontspec`/`luatexja-fontspec`ファミリを4つ新設した（クラス冒頭のフォント設定部）。
+
+```latex
+\newfontfamily\ipsj@cmrlabel{Latin Modern Roman}      % \labelfont用：常にComputer Modern相当
+\newfontfamily\ipsj@nonsubmittimes{TeX Gyre Termes}   % 非submit分岐用：常にTimes相当
+\newjfontfamily\ipsj@FutoMin{Harano Aji Mincho}       % 太明：\bfseriesで本物のMincho-Boldに到達
+\newjfontfamily\ipsj@FutoGoth{Harano Aji Gothic}      % 太ゴ：\bfseriesで本物のGothic-Boldに到達
+```
+
+`\ipsj@FutoMin`/`\ipsj@FutoGoth`は`\setmainjfont`/`\setsansjfont`とは独立した別の和文フォントファミリ宣言（`luatexja-fontspec`の`\newjfontfamily`、和文フォント用の`\newfontfamily`相当。当初`\newkanjifontfamily`という存在しないコマンド名を使ってしまい`Undefined control sequence`になったため、`luatexja-fontspec-29e.sty`を直接読んで正しいコマンド名を確認した）であり、`BoldFont`を指定していないため、`\bfseries`を適用すると§4.28の Medium 置換を経由せず Harano Aji Mincho/Gothic の**本物の**Boldフェイスに到達する。これにより「太明朝→ゴシック代用」という一般原則（§4.16/§4.28）とは別に、「太明朝」「太ゴシック」という原文の専用仮想フォント（非submit時の論文種別ラベル・タイトル専用）の意味——**本物の太字を使う**——を区別して再現できる。
+
+**結果**：5公式サンプル＋実文書13件、合計18件すべてを再コンパイルし、ページ数に変化なし、エラーなし（全てのテスト文書が`submit`を指定しているため、修正した非`submit`分岐自体は今回のテストでは実行されない。これは原文でも同様で、IPSJが最終版を版組みする際にのみ使われる分岐であり、実際の投稿者がこのクラスを使う際にはまず使われない）。`\labelfont`の修正も同様に、現行テスト文書群では和文モード＋カスタムフォントパッケージという組み合わせが存在しないため視覚的な検証はできていないが、原文との対応関係は確認済み。
+
+**点検の結果、問題が無いことを確認できたもの**：`\authorfont`/`\eauthorfont`/`\Engeauthorfont`/`\elabelfont`/`\Enguketukefont`/`\footfont`/`\Edifont`/`\HeadfontJ`/`\SHUBETUfontE`/`\etitlefont`/`\Engtitlefont`（いずれも原文と完全一致、または分岐の両方が同一の値に収束するため単一定義への簡略化が妥当）。`ipsjpref.sty`（序文モード）はフォントマクロを一切再定義しておらず、`ipsj.cls`本体の値をそのまま使う構造だったため、独自の不具合は無かった。`\textcopyrighttx`（footer の©記号、原文は`txsy`シンボルフォント＋明示的なTimes "c"で手動描画）は標準の`\copyright`に簡略化されているが、見た目の差は目視で確認した範囲では無視できるレベルであり、低リスクな簡略化として残した。
+
+**教訓**：フォント関連の不具合が繰り返し見つかった根本原因は、`\if@submit`で分岐するマクロが`ipsj.cls`全体に約10個あり、**そのうち2個（`\EGAIYOU`/`\EKEYWORD`、§4.30で発見）を直した時点で「同種のバグは潰した」と判断してしまい、残りを横断的に確認していなかった**ことにある。`grep`で`\if@submit`と`\usefont`/`\useroman`/`\usekanji`の組み合わせを機械的に検索すれば全箇所を一度に列挙できたはずで、§4.18の「機械的な名前比較は出発点に過ぎない」という教訓に、今回は「**1つの不具合パターンを見つけたら、同じパターンの他の出現箇所を全て横断検索する**」という教訓を追加する。
+
 ## 5. 当初のテスト文書では見つからなかった機能（後で追加したもの）
 
 最初に用意したテスト文書（ユーザー提供の実論文1件を移植したもの、`techrep,submit,noauthor`）は機能を網羅していなかった。情報処理学会公式サンプル（`jsample.tex`/`esample.tex`/`tech-jsample.tex`）でテストして初めて、未実装または未検証だったことが分かった機能：
@@ -940,6 +970,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`\Center`（§4.18 finding 6, 7）**：原文のロジックをそのまま移植したが、テスト文書群のいずれも使用していないため出力比較はできていない。
 - **`\twocolcaption`/`\twocolecaption`/`\twocolfig`（§4.29）**：図表番号付きキャプションを2段幅（`\textwidth`全体）で組むための機構。§4.29で`\@makecaption`/`\ecaption`と同じ`\shortstack`による複数行検出を追加移植したが、テスト文書群のいずれも使用していないため出力比較はできていない。
 - **`\cite`の引用番号ソート（§4.18 finding 1）**：`esample-lualatex.tex`で実際に複数引用（`\cite{companion,latex}`）が使われ正しく動作することを視認したが、並べ替えが必要になる「番号が逆順または不連続な複数引用」のケースは5つのテスト文書のいずれにも無く、ソート自体の動作は未検証。
+- **`\if@submit`（`\ifDS@submit`）が偽になる分岐（§4.33）**：`\SHUBETUfontJ`/`\bothashira`/`\botnomble`/`\jtitlefont`/`\juketukefont`/`\euketukefont`の非`submit`分岐（`\ipsj@FutoMin`/`\ipsj@FutoGoth`/`\ipsj@nonsubmittimes`を使う、IPSJが最終版を版組みする際専用の経路）と`\labelfont`（常にComputer Modern相当に固定）は、原文のコードをそのまま移植したが、テスト文書群が全て`submit`を指定しているため出力比較はできていない。
 
 ## 8. ファイル一覧（このリポジトリにおける位置づけ）
 
