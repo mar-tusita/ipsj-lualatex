@@ -152,13 +152,13 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 ```latex
 \setmainfont{TeX Gyre Termes}
 \setsansfont{TeX Gyre Heros}
-\setmainjfont{Harano Aji Mincho}
-\setsansjfont{Harano Aji Gothic}
+\setmainjfont{Harano Aji Mincho}[BoldFont={Harano Aji Gothic Medium}]
+\setsansjfont{Harano Aji Gothic Medium}[BoldFont={Harano Aji Gothic Medium}]
 ```
 
-と指定しています。別のフォントに差し替えたい場合は、`\documentclass` の後で `\setmainjfont` 等を再度呼べば上書きできます（`luatexja-fontspec` の標準的な使い方です）。旧クラスにあった `JY1`/`JT1` エンコーディングや太明朝・太ゴシックの仮想フォント差し替え（`submit` オプション無指定時の「太ミン」「太ゴ」）は、対応する物理フォントの Bold ウェイトに置き換えています。
+と指定しています。別のフォントに差し替えたい場合は、`\documentclass` の後で `\setmainjfont` 等を再度呼べば上書きできます（`luatexja-fontspec` の標準的な使い方です）。旧クラスにあった `JY1`/`JT1` エンコーディングや太明朝・太ゴシックの仮想フォント差し替え（`submit` オプション無指定時の「太ミン」「太ゴ」）は、上記の `BoldFont` 指定（次項参照）によって実現しています。
 
-**太字明朝とゴシックの代用について**：原文`ipsj.cls`が前提としていた和文フォント環境には明朝の太字（Bold）シェイプが無く、`\bfseries`は自動的にゴシックで代用されていました（和文組版の古くからの慣習）。本クラスが採用する Harano Aji Mincho は本物の Bold ウェイトを持つため、何も対策しなければ見出し・概要ラベル・図表番号・著者紹介の氏名などが原文と異なり太字明朝で出てしまいます。これを避けるため、クラス内部でこれらの箇所には明示的に`\gtfamily`を指定し、原文と同じ見た目（太字ゴシック）になるようにしています。利用者が原稿中で独自に`\mcfamily\bfseries`等を使う場合はこの代用は働かず、本物の太字明朝がそのまま使われます。
+**太字明朝とゴシックの代用について**：原文`ipsj.cls`が前提としていた和文フォント環境には明朝の太字（Bold）シェイプが無く、`\bfseries`は自動的にゴシックで代用されていました（和文組版の古くからの慣習）。代用先は「太いゴシック」ではなく、当時のゴシック書体が標準として持っていた唯一のウェイトである**Medium**で、ゴシック自体をボールド化する処理は行われていませんでした。本クラスが採用する Harano Aji Mincho/Gothic はいずれも本物の Bold ウェイトを持つため、対策なしでは見出し・概要ラベル・図表番号や、原稿中で直接`\textbf{和文}`と書いた箇所などが原文と異なる太字明朝・太字ゴシックで出てしまいます。これを避けるため、`\setmainjfont`/`\setsansjfont`の`BoldFont`オプションで「明朝・ゴシックいずれの太字も`Harano Aji Gothic Medium`に切り替える」という代用規則自体をフォント宣言レベルで定義しています。この方式により、クラス内部の処理だけでなく、**原稿中で直接`\bfseries`や`\textbf{}`を使った場合も**自動的に原文と同じ見た目（太字ゴシック、ただしMediumウェイト）になります。
 
 ### 9. 縦組（`tate`）・トンボ（`tombow`）
 
@@ -181,12 +181,12 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 | `ses-sample-lualatex.tex` | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（和文） |
 | `ses-esample-lualatex.tex` | 同上（英文） |
 
-`jsample`/`esample`/`tech-jsample` については対応する元の `*.tex`（pLaTeX用）と両方のPDFも参考用に同梱しています。`ipsj.cls` → `ipsj-lualatex.cls` への移行作業の実例として差分を確認してください（`ses-sample`/`ses-esample` の元ファイルは検証用に提供を受けた一時資料のため同梱していません）。
+`jsample`/`esample`/`tech-jsample`/`ses-sample`/`ses-esample` のいずれについても、対応する元の `*.tex`（pLaTeX用）と両方のPDFを参考用に同梱しています。`ses-sample`/`ses-esample` の移植元は、IPSJ公式配布の `ipsj.cls` ではなく、SESが独自に配布している `ses-ipsj.cls`（`ipsj.cls` に `ses` オプションを追加したSES改変版）と、それが内部で読み込む `ses.sty` です。`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses-ipsj.cls`/`ses.sty` を `ipsj-lualatex.cls` と読み比べれば、移行作業の実例として差分を確認できます。
 
 ## 既知の制限
 
 - 全ての論文誌種別オプション（`ACS`/`PRO`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`TCE`）のヘッダ文字列・DOI表記・年度算出式は移植していますが、個別に組版確認をしたのは `techrep` と `JIP` のみです。
-- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`eqnarray`/`\[ \]` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境、`enumerate`/`itemize`/`description`本体、`equation`環境は全テスト文書（の少なくとも1つ）で使用されており、原文と画素単位で一致することを確認済みです）。
+- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`eqnarray`/`\[ \]`・`\twocolcaption`/`\twocolecaption`/`\twocolfig` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境、`enumerate`/`itemize`/`description`本体、`equation`環境は全テスト文書（の少なくとも1つ）で使用されており、原文と画素単位で一致することを確認済みです）。
 - `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、原文との画素単位の比較による検証はできていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
 - `\cite`の引用番号自動ソートは、`esample-lualatex.tex`の複数引用（`\cite{companion,latex}`）で動作することを視認しましたが、並べ替えが実際に発生するケース（番号が逆順または不連続な複数引用）はテスト文書群に無く、ソート処理自体は未検証です。
 

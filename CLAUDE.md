@@ -862,6 +862,7 @@ docker run --rm -v "$(pwd)":/workdir -w /workdir texlive/texlive:latest \
 - **`tombow` のオフセット調整**：トンボの位置（紙端からの距離）は10mm固定。原文にあった `\@tombowwidth` 相当のカスタマイズ余地は設けていない。
 - **序文（`preface`）モード**：§4.18 finding 10で`\authortitle`/`\ps@IPSJTITLEheadings`/`alone`オプション/論文種別ラベル非表示を実装したが、対応する`ipsjpref.sty`版の参照PDFが手元に無いため、原文との画素単位の比較による検証はできていない。手作りの最小限のテスト文書（`\documentclass[preface,submit]`、`\documentclass[preface,submit,alone]`）でエラー無くコンパイルでき、概要・キーワード無しの簡潔なタイトルページになることのみ確認済み。
 - **`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`\Center`（§4.18 finding 6, 7）**：原文のロジックをそのまま移植したが、テスト文書群のいずれも使用していないため出力比較はできていない。
+- **`\twocolcaption`/`\twocolecaption`/`\twocolfig`（§4.29）**：図表番号付きキャプションを2段幅（`\textwidth`全体）で組むための機構。§4.29で`\@makecaption`/`\ecaption`と同じ`\shortstack`による複数行検出を追加移植したが、テスト文書群のいずれも使用していないため出力比較はできていない。
 - **`\cite`の引用番号ソート（§4.18 finding 1）**：`esample-lualatex.tex`で実際に複数引用（`\cite{companion,latex}`）が使われ正しく動作することを視認したが、並べ替えが必要になる「番号が逆順または不連続な複数引用」のケースは5つのテスト文書のいずれにも無く、ソート自体の動作は未検証。
 
 ## 8. ファイル一覧（このリポジトリにおける位置づけ）
