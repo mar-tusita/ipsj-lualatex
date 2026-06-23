@@ -2,6 +2,11 @@ name: Deploy GitHub Pages
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'README.md'
 
 permissions:
   contents: read
@@ -56,11 +61,9 @@ jobs:
           source: ./_src
           verbose: true
 
-      - run: ls -lR ./
+      - run: ls -lR ./_site
   
       - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
 
   deploy:
     needs: build
