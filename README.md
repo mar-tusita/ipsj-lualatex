@@ -226,4 +226,4 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 - **Harano Aji Mincho / Harano Aji Gothic**（`haranoaji`パッケージ）：本クラスが採用する和文フォント。Adobe・Googleが共同開発した源ノ明朝・源ノ角ゴシック（Source Han Serif/Sans）をAdobe-Japan1字形順に組み替えたもので、情報処理学会公式サンプルのPDFも同じフォントで組まれています。作者のMasamichi Hosoda氏に感謝します。
 - **TeX Gyre Termes / TeX Gyre Heros**：Times/Helvetica系の見た目が欲しい場合に使う欧文フォント。GUST e-foundryプロジェクトに感謝します。
 - 検証作業では、`Ghostscript`・`ImageMagick`・`pdfminer.six`・`qpdf`・Dockerの`texlive/texlive`公式イメージにも大いに助けられました。原文との画素単位の比較や、埋め込みフォントの直接確認といった検証手法は、これらのツールなしには実行できませんでした。
-- **Claude Code** 本ツールの開発全般にわたって利用しました。
+- **Claude Code**：本ツールの開発全般にわたって利用しました。
