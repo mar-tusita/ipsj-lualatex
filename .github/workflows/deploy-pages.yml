@@ -56,6 +56,8 @@ jobs:
         with:
           source: ./_src
           verbose: true
+      
+      - run: ls -lR ./
 
       - uses: actions/upload-pages-artifact@v3
         with:
