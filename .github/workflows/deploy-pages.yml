@@ -31,6 +31,23 @@ jobs:
           echo "" > _src/_includes/header.html
           echo "" > _src/_includes/footer.html
 
+      - name: Put additional documents
+        run: |
+          cp ipsj-lualatex.cls _src/
+          cp bibsample.bib ebibsample.bib ipsjunsrt-e.bst  ipsjunsrt.bst _src/
+          cp ipsj.cls ipsjpref.sty ipsjsort-e.bst ipsjsort.bst ipsjtech.sty _src/
+          cp ses-ipsj.cls ses.sty _src/
+          cp jsample.tex jsample.pdf _src/
+          cp jsample-lualatex.tex jsample-lualatex.pdf _src/
+          cp esample.tex esample.pdf _src/
+          cp esample-lualatex.tex esample-lualatex.pdf _src/
+          cp tech-jsample.tex tech-jsample.pdf _src/
+          cp tech-jsample-lualatex.tex tech-jsample-lualatex.pdf _src/
+          cp ses-sample.tex ses-sample.pdf _src/
+          cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _src/
+          cp ses-esample.tex ses-esample.pdf _src/
+          cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _src/
+
       - uses: actions/configure-pages@v6
 
       - name: Build with Jekyll
@@ -39,29 +56,9 @@ jobs:
           source: ./_src
           verbose: true
 
-      - name: Put additional documents
-        run: |
-          mkdir -p _site
-          cp ipsj-lualatex.cls _site/
-          cp bibsample.bib ebibsample.bib ipsjunsrt-e.bst  ipsjunsrt.bst _site/
-          cp ipsj.cls ipsjpref.sty ipsjsort-e.bst ipsjsort.bst ipsjtech.sty _site/
-          cp ses-ipsj.cls ses.sty _site/
-          cp jsample.tex jsample.pdf _site/
-          cp jsample-lualatex.tex jsample-lualatex.pdf _site/
-          cp esample.tex esample.pdf _site/
-          cp esample-lualatex.tex esample-lualatex.pdf _site/
-          cp tech-jsample.tex tech-jsample.pdf _site/
-          cp tech-jsample-lualatex.tex tech-jsample-lualatex.pdf _site/
-          cp ses-sample.tex ses-sample.pdf _site/
-          cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _site/
-          cp ses-esample.tex ses-esample.pdf _site/
-          cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
-      
-      - run: ls -lR ./
-
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: _src
 
   deploy:
     needs: build
