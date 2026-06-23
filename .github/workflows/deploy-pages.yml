@@ -22,21 +22,6 @@ jobs:
 
       - name: Prepare site
         run: |
-          mkdir -p _site
-          cp ipsj-lualatex.cls _site/
-          cp bibsample.bib ebibsample.bib ipsjunsrt-e.bst  ipsjunsrt.bst _site/
-          cp ipsj.cls ipsjpref.sty ipsjsort-e.bst ipsjsort.bst ipsjtech.sty _site/
-          cp ses-ipsj.cls ses.sty _site/
-          cp jsample.tex jsample.pdf _site/
-          cp jsample-lualatex.tex jsample-lualatex.pdf _site/
-          cp esample.tex esample.pdf _site/
-          cp esample-lualatex.tex esample-lualatex.pdf _site/
-          cp tech-jsample.tex tech-jsample.pdf _site/
-          cp tech-jsample-lualatex.tex tech-jsample-lualatex.pdf _site/
-          cp ses-sample.tex ses-sample.pdf _site/
-          cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _site/
-          cp ses-esample.tex ses-esample.pdf _site/
-          cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
           mkdir -p _src/_includes
           cp README.md _src
           echo "theme: minima" > _src/_config.yml
@@ -53,7 +38,24 @@ jobs:
         with:
           source: ./_src
           verbose: true
-        
+
+      - name: Put additional documents
+        run: |
+          cp ipsj-lualatex.cls _site/
+          cp bibsample.bib ebibsample.bib ipsjunsrt-e.bst  ipsjunsrt.bst _site/
+          cp ipsj.cls ipsjpref.sty ipsjsort-e.bst ipsjsort.bst ipsjtech.sty _site/
+          cp ses-ipsj.cls ses.sty _site/
+          cp jsample.tex jsample.pdf _site/
+          cp jsample-lualatex.tex jsample-lualatex.pdf _site/
+          cp esample.tex esample.pdf _site/
+          cp esample-lualatex.tex esample-lualatex.pdf _site/
+          cp tech-jsample.tex tech-jsample.pdf _site/
+          cp tech-jsample-lualatex.tex tech-jsample-lualatex.pdf _site/
+          cp ses-sample.tex ses-sample.pdf _site/
+          cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _site/
+          cp ses-esample.tex ses-esample.pdf _site/
+          cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
