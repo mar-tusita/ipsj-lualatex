@@ -6,6 +6,31 @@
 
 **変換元スタイルファイルのバージョン**：`ipsj.cls` v4.1 [2025/02/05]、`ipsjpref.sty` v3.00 [2017/02/16]、`ipsjtech.sty` v3.00 [2012/06/01]（いずれも情報処理学会公式配布分）。`ses.sty` はSES2025（2025年開催のソフトウェアエンジニアリングシンポジウム）への投稿用として配布されていたものを基にしています。これらのスタイルファイルは年度や版によって変更される可能性があるため、最新版との差異が疑われる場合は配布元（情報処理学会 投稿要領 <http://www.ipsj.or.jp/journal/submit/style.html>、SES運営委員会）の現行版を確認してください。
 
+## 作成したファイル
+
+スタイルファイルとともに、すぐに試せるサンプルを用意しています（`ipsj-lualatex.cls` を使うように調整済み）。
+
+| ファイル | 内容 |
+|---|---|
+|[ipsj-lualatex.cls](./ipsj-lualatex.cls)|LuaLaTeXで使える情報処理学会論文・研究報告用スタイルファイル|
+| [jsample-lualatex.tex](./jsample-lualatex.tex) | 通常の論文誌投稿（和文、複数著者・現所属・著者紹介あり）の公式サンプル[jsample.tex](./jsample.tex)を移植したもの |
+| [esample-lualatex.tex](./esample-lualatex.tex) | 英文論文誌（`JIP`, `preprint`, `english`）の公式サンプル[esample.tex](./esample.tex)を移植したもの |
+| [tech-jsample-lualatex.tex](./tech-jsample-lualatex.tex) | 研究報告の公式サンプル[tech-jsample.tex](./tech-jsample.tex)を移植したもの |
+| [ses-sample-lualatex.tex](./ses-sample-lualatex.tex) | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（和文）[ses-sample.tex](./ses-sample.tex)を移植したもの |
+| [ses-esample-lualatex.tex](./ses-esample-lualatex.tex) | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（英文）[ses-esample.tex](./ses-esample.tex)を移植したもの |
+
+## PDF出力サンプル
+
+pLaTeX版は配布物そのまま、LuaLaTeX版は上記ファイルをTeX Live 2026でコンパイルして作成しています。
+
+| pLaTeX版 | LuaLaTeX版 |
+|---|---|
+|[jsample.pdf](./jsample.pdf) |[jsample-lualatex.pdf](./jsample-lualatex.pdf) |
+|[esample.pdf](./esample.pdf) |[esample-lualatex.pdf](./esample-lualatex.pdf) |
+| [tech-jsample.pdf](./tech-jsample.pdf) | [tech-jsample-lualatex.pdf](./tech-jsample-lualatex.pdf) |
+| [ses-sample.pdf](./ses-sample.pdf) | [ses-sample-lualatex.pdf](./ses-sample-lualatex.pdf) |
+| [ses-esample.pdf](./ses-esample.pdf) | [ses-esample-lualatex.pdf](./ses-esample-lualatex.pdf) |
+
 ## 必要環境
 
 - **LuaLaTeX**（LuaHBTeX）。比較的新しいTeX Liveを推奨します（開発・動作確認はTeX Live 2026で行っています）。
@@ -66,13 +91,13 @@ lualatex main.tex
 
 これまで `ipsj.cls` / `ipsjpref.sty` / `ipsjtech.sty` を使っていた方向けに、変更点をまとめます。
 
-### 1. ファイル構成が1つに統合
+### 1. ファイルは1つだけ
 
 旧来は `ipsj.cls` が `preface` / `techrep` オプションに応じて `ipsjpref.sty` / `ipsjtech.sty` を内部で `\input` していましたが、`ipsj-lualatex.cls` は**この1ファイルだけ**で全モードに対応します。`ipsjpref.sty` や `ipsjtech.sty` を別途配置する必要はありません。
 
 ### 2. エンジンはLuaLaTeX専用
 
-`platex` / `uplatex` / `pdflatex` / `xelatex` では使えません。`\documentclass` 1行を変えるだけでは移行できないので、原稿ファイル側にも以下の対応が必要です（詳細は次項）。
+`platex` / `uplatex` / `pdflatex` / `xelatex` では使えません（使えないことを厳密に確認したわけではありませんが、少なくとも考慮はしていません）。`\documentclass` 1行を変えるだけでは移行できないので、原稿ファイル側にも以下の対応が必要です（詳細は次項）。
 
 ### 3. `\documentclass` とプリアンブルの書き換え
 
@@ -85,7 +110,7 @@ lualatex main.tex
 | `\usepackage{pxjahyper}` | 削除する（pLaTeX/upLaTeX専用。LuaTeXは和文PDFしおりをネイティブに扱えるため不要かつ非対応） |
 | `\usepackage[varg]{txfonts}` 等のpdfTeX用Type1フォント差し替え | 削除し、代わりに`\setmainfont{TeX Gyre Termes}`/`\setsansfont{TeX Gyre Heros}`を追加してください（`txfonts`自体はLuaLaTeXと互換性がありませんが、それが与えていたTimes/Helvetica系の見た目は`ipsj-lualatex.cls`では再現されないため、見た目を保ちたい場合は明示的な指定が必要です。詳細は後述「フォントの指定方法」） |
 
-`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください。
+`amsmath`／`subcaption`／`multirow`／`xcolor`／`tcolorbox`／`inconsolata`／`algorithm`系／`cite`／`url`・`xurl`／`listings`等、その他多くの汎用パッケージは無変更でそのまま動作しました。`listings`に和文対応を加える`jlisting.sty`をプロジェクトにローカル同梱している場合は、そのファイルが古い日本語エンコーディング（ISO-2022-JP相当）で保存されていることがあり、LuaLaTeX（UTF-8前提）ではエラーになります。`iconv -f ISO-2022-JP -t UTF-8 jlisting.sty > jlisting.sty.new` のように変換してから差し替えてください（差し替えて動作することは確認しています）。
 
 ### 4. 用紙サイズオプションの廃止（重要）
 
@@ -103,7 +128,7 @@ lualatex main.tex
 | `OT` | （廃止） | 同上 |
 | `a4paper` 等の用紙オプション全般 | （廃止） | 上記4節参照。常にA4 |
 
-それ以外のオプション（`techrep`, `submit`, `noauthor`, `english`, `preface`, `preprint`, `draft`, `final`, `tate`, `oneside`/`twoside`, `onecolumn`/`twocolumn`, `leqno`, `fleqn`, `openbib`, 各論文誌略称 `PRO`/`ACS`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`JIP`/`TCE`、各論文種別 `technote`/`sigrecommended`/`invited`/`Data`/`Survey`/`Research`/`Short`/`systems`/`services`/`devices`/`Express`/`Practice`/`Content`/`system`/`abstract`/`invitedshort`/`recommendedshort`/`recommendedresearch`/`recommendedpractice`/`recommendedcontent`/`recommendeddevices`）は**そのまま同じ名前で使えます**。`fleqn`は数式が常にフラッシュレフトになる原文の挙動が既定で常時有効なため、指定しても無効果です（警告を出さないために受理だけします）。
+それ以外のオプション（`techrep`, `submit`, `noauthor`, `english`, `preface`, `preprint`, `draft`, `final`, `tate`, `oneside`/`twoside`, `onecolumn`/`twocolumn`, `leqno`, `fleqn`, `openbib`, 各論文誌略称 `PRO`/`ACS`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`JIP`/`TCE`、各論文種別 `technote`/`sigrecommended`/`invited`/`Data`/`Survey`/`Research`/`Short`/`systems`/`services`/`devices`/`Express`/`Practice`/`Content`/`system`/`abstract`/`invitedshort`/`recommendedshort`/`recommendedresearch`/`recommendedpractice`/`recommendedcontent`/`recommendeddevices`）は**そのまま同じ名前で使えます**。`fleqn`は数式が常にフラッシュレフトになる原文の挙動が既定で常時有効なため、指定しても無効果です（警告を出さないために受理はします）。
 
 `preface`（序文）モードでは、`ipsjpref.sty`由来の`alone`オプションも使えます。序文が単独で1ページに収まる場合に指定すると、ヘッダのページ参照が「先頭ページ–末尾ページ」の範囲表記ではなく単一ページ表記になります。
 
@@ -156,7 +181,7 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 
 と指定しています。別のフォントに差し替えたい場合は、`\documentclass` の後で `\setmainjfont` 等を再度呼べば上書きできます（`luatexja-fontspec` の標準的な使い方です）。旧クラスにあった `JY1`/`JT1` エンコーディングや太明朝・太ゴシックの仮想フォント差し替え（`submit` オプション無指定時の「太ミン」「太ゴ」）は、上記の `BoldFont` 指定（次項参照）によって実現しています。
 
-**欧文（ラテン文字）フォントはクラス側では一切指定していません**。`\setmainfont`/`\setsansfont`を呼んでいないため、`fontspec`の既定どおり**Latin Modern**（Computer Modernの直接の後継。見た目はほぼ同一）になります。これは手抜きではなく、原文`ipsj.cls`自体の挙動を調べた結果に基づく意図的な選択です。`ipsj.cls`は`\rmdefault`/`\sfdefault`を一切書き換えておらず（`platex`で実際に確認済み）、ラテン文字フォントの選択は完全にドキュメント側に委ねられています。情報処理学会公式サンプルのうち和文モードのもの（`jsample.tex`等）はラテン文字用フォントパッケージを何も読み込んでおらず、実際にComputer Modernで組まれています。一方、英文モードのサンプル（`esample.tex`/`ses-esample.tex`）がTimes/Helvetica系に見えるのは、**そのドキュメント自身**が`\usepackage[varg]{txfonts}`（pLaTeX/pdfTeX時代のPostScriptフォントパッケージ。LuaLaTeXでは使えません）を独自に読み込んでいたからです。
+**欧文（ラテン文字）フォントをクラス側では一切指定していません**。`\setmainfont`/`\setsansfont`を呼んでいないため、`fontspec`の既定どおり**Latin Modern**（Computer Modernの直接の後継。見た目はほぼ同一）になります。これは手抜きではなく、原文`ipsj.cls`自体の挙動を調べた結果に基づく意図的な選択です。`ipsj.cls`は`\rmdefault`/`\sfdefault`を一切書き換えておらず（`platex`で実際に確認済み）、ラテン文字フォントの選択は完全にドキュメント側に委ねられています。情報処理学会公式サンプルのうち和文モードのもの（`jsample.tex`等）はラテン文字用フォントパッケージを何も読み込んでおらず、実際にComputer Modernで組まれています。一方、英文モードのサンプル（`esample.tex`/`ses-esample.tex`）がTimes/Helvetica系に見えるのは、**そのドキュメント自身**が`\usepackage[varg]{txfonts}`（pLaTeX/pdfTeX時代のPostScriptフォントパッケージ。LuaLaTeXでは使えません）を独自に読み込んでいるからです。
 
 したがって、Times/Helvetica系の見た目が欲しい場合は、`txfonts`を読んでいた原稿だったときと同様に、**ご自身のプリアンブルで**`fontspec`経由で明示的に指定してください（本リポジトリの`esample-lualatex.tex`/`ses-esample-lualatex.tex`も、削除した`txfonts`の代わりにこの方法でTimes/Helvetica系を再現しています）。
 
@@ -176,32 +201,18 @@ LuaLaTeX（`luatexja`）では `zw`/`zh` はネイティブ単位ではなく、
 
 `\profile[<画像のベース名>]{...}{...}{...}` の形で画像を指定した場合、`<画像のベース名>.eps` の存在のみをチェックします（旧クラスと同じ挙動）。PNG/JPEG/PDF画像を使う場合は `.eps` という名前のファイルを別途用意するか、本クラスの `\IfFileExists` 判定部分を改造してください。
 
-## サンプルファイル
-
-このリポジトリには検証用に以下のサンプルを用意しています（`ipsj-lualatex.cls` を使うように調整済み）。
-
-| ファイル | 内容 |
-|---|---|
-| `jsample-lualatex.tex` | 通常の論文誌投稿（和文、複数著者・現所属・著者紹介あり）の公式サンプルを移植したもの |
-| `esample-lualatex.tex` | 英文論文誌（`JIP`, `preprint`, `english`）の公式サンプルを移植したもの |
-| `tech-jsample-lualatex.tex` | 研究報告の公式サンプルを移植したもの |
-| `ses-sample-lualatex.tex` | SES（ソフトウェアエンジニアリングシンポジウム）向け `ses` オプションのサンプル（和文） |
-| `ses-esample-lualatex.tex` | 同上（英文） |
-
-`jsample`/`esample`/`tech-jsample`/`ses-sample`/`ses-esample` のいずれについても、対応する元の `*.tex`（pLaTeX用）と両方のPDFを参考用に同梱しています。`ses-sample`/`ses-esample` の移植元は、IPSJ公式配布の `ipsj.cls` ではなく、SESが独自に配布している `ses-ipsj.cls`（`ipsj.cls` に `ses` オプションを追加したSES改変版）と、それが内部で読み込む `ses.sty` です。`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses-ipsj.cls`/`ses.sty` を `ipsj-lualatex.cls` と読み比べれば、移行作業の実例として差分を確認できます。
-
 ## 既知の制限
 
 - 全ての論文誌種別オプション（`ACS`/`PRO`/`TOD`/`TOM`/`CDS`/`DC`/`DCON`/`CVA`/`TBIO`/`SLDM`/`TCE`）のヘッダ文字列・DOI表記・年度算出式は移植していますが、個別に組版確認をしたのは `techrep` と `JIP` のみです。
-- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`eqnarray`/`\[ \]`・`\twocolcaption`/`\twocolecaption`/`\twocolfig` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認はまだ行っていません（`quote`環境、`enumerate`/`itemize`/`description`本体、`equation`環境は全テスト文書（の少なくとも1つ）で使用されており、原文と画素単位で一致することを確認済みです）。
-- `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、原文との画素単位の比較による検証はできていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
-- `\cite`の引用番号自動ソートは、`esample-lualatex.tex`の複数引用（`\cite{companion,latex}`）で動作することを視認しましたが、並べ替えが実際に発生するケース（番号が逆順または不連続な複数引用）はテスト文書群に無く、ソート処理自体は未検証です。
+- `\newtheorem` のIPSJ向けカスタマイズ・`quotation`/`verse` のインデント調整・`recommendation` 環境・`\ruby`/`\QED`/`\MARU`/`\Hline`/`\dummyfigure`/`\dummyfiguret`/`eqnarray`/`\[ \]`・`\twocolcaption`/`\twocolecaption`/`\twocolfig` は原文のコードをそのまま移植していますが、検証用のテスト文書のいずれも実際に使用していないため、出力比較による動作確認は行っていません（`quote`環境、`enumerate`/`itemize`/`description`本体、`equation`環境はテスト文書の少なくとも1つで使用されており、組版確認をして問題がないと判断しています。
+- `preface`（序文）モードは`\authortitle`・専用ページスタイル・`alone`オプションを移植していますが、対応する参照PDFが手元に無いため、出力比較による動作確認は行っていません。最小限の手作りテスト文書でエラー無くコンパイルできることのみ確認済みです。
+- `\cite`の引用番号自動ソートは、`esample-lualatex.tex`の複数引用（`\cite{companion,latex}`）で動作することを確認しましたが、並べ替えが実際に発生するケース（番号が逆順または不連続な複数引用）はテスト文書に無く、ソート処理自体は未検証です。
 
 ## 開発・検証の方針
 
-本クラスは、`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses.sty`のソースコードを直接読み比べながら実装し、情報処理学会公式サンプル（`jsample`/`esample`/`tech-jsample`）に加え、実際に投稿された論文・研究報告（公開はしていません）多数を使って、pLaTeXでビルドした元のPDFと画素単位で比較する形で検証しています。和文フォントには情報処理学会公式サンプルのPDFも既に使用している `Harano Aji Mincho`/`Harano Aji Gothic` をそのまま採用しているため、和文部分の字体は原文とほぼ完全に一致します。
+本クラスは、`ipsj.cls`/`ipsjpref.sty`/`ipsjtech.sty`/`ses.sty`のソースコードを直接読み比べながら実装し、情報処理学会公式サンプル（`jsample`/`esample`/`tech-jsample`）に加え、手元にあって利用可能な論文・研究報告を多数使い、pLaTeXでビルドした元のPDFと画素単位で比較する形で検証しています。和文フォントには情報処理学会公式サンプルのPDFも既に使用している `Harano Aji Mincho`/`Harano Aji Gothic` をそのまま採用しているため、和文部分の字体は原文とほぼ完全に一致します。
 
-その一方で、LuaLaTeX（LuaTeX-ja）とpLaTeXでは行送り・改ページの計算がエンジンレベルでわずかに異なるため、原稿によっては最終的なページ数が元のpLaTeX版と1ページ程度ずれることがあります。これは検証の過程で繰り返し確認しており、内容の欠落・崩れではなく、ページ内の余白の配分がわずかに変わることによる無害な差です。逆に、ページ数が大きくずれる・図表が消える・文字が異常な書体になるといった症状は、本クラス側の変換ミスである可能性が高いので、ぜひ報告してください。
+その一方で、LuaLaTeX（LuaTeX-ja）とpLaTeXでは行送り・改ページの計算が**エンジンレベルでわずかに異なる**ため、原稿によっては最終的なページ数が元のpLaTeX版と1ページ程度ずれることがあります（LuaLaTeXで処理すると、文書の内容に依存してページ数が増えたり減ったりします）。これは検証の過程で繰り返し確認していますが、これは`ipsj-lualatex.cls`の内容欠落・処理崩れではなく、ページ内の余白の配分がわずかに変わることによる差であって、無害かつ対応不能だと考えています。逆に、ページ数が大きくずれる・図表が消える・文字が異常な書体になるといった症状は、本クラス側の変換ミスである可能性が高いので、ぜひ[教えて](https://bsky.app/profile/matusita.bsky.social)ください。
 
 ## 謝辞
 
