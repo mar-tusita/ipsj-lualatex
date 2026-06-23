@@ -31,6 +31,14 @@ jobs:
           echo "" > _src/_includes/header.html
           echo "" > _src/_includes/footer.html
 
+      - uses: actions/configure-pages@v6
+
+      - name: Build with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./_src
+          verbose: true
+
       - name: Put additional documents
         run: |
           mkdir -p _site
@@ -48,14 +56,6 @@ jobs:
           cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _site/
           cp ses-esample.tex ses-esample.pdf _site/
           cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
-
-      - uses: actions/configure-pages@v6
-
-      - name: Build with Jekyll
-        uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./_src
-          verbose: true
       
       - run: ls -lR ./
 
