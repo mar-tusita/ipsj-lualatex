@@ -39,6 +39,10 @@ jobs:
           cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
           mkdir -p _src
           cp README.md _src
+          echo "theme: minima" > _src/_config.yml
+          echo "title: LuaLaTeXに対応する情報処理学会（IPSJ）の論文・研究報告用スタイルファイル" >> _src/_config.yml
+          echo "titles_from_headings:" >> _src/_config.yml
+          echo "  enabled: false" >> _src/_config.yml
 
       - uses: actions/configure-pages@v6
 
