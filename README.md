@@ -4,7 +4,7 @@
 
 後方互換性（pLaTeX, upLaTeX, pdfLaTeX, XeLaTeXでの利用）は考慮していません。現在のLuaLaTeXのみを対象としています。
 
-**変換元スタイルファイルのバージョン**：[ipsj.cls](./ipsj.cls) v4.1 [2025/02/05]、[ipsjpref.sty](./ipsjpref.sty) v3.00 [2017/02/16]、[ipsjtech.sty](./ipsjtech.sty) v3.00 [2012/06/01]（いずれも情報処理学会公式配布分）。[ses.sty](./ses.sty) はSES2025（2025年開催のソフトウェアエンジニアリングシンポジウム）への投稿用として配布されていたものを基にしています。これらのスタイルファイルは年度や版によって変更される可能性があるため、上記バージョンが配布元（[情報処理学会](http://www.ipsj.or.jp/journal/submit/style.html)、ソフトウェア工学研究会）の現行版と一致しているか、確認してください。
+**変換元スタイルファイルのバージョン**：[ipsj.cls](./ipsj.cls) v4.1 [2025/02/05]、[ipsjpref.sty](./ipsjpref.sty) v3.00 [2017/02/16]、[ipsjtech.sty](./ipsjtech.sty) v3.00 [2012/06/01]（いずれも情報処理学会公式配布分）。[ses.sty](./ses.sty) はSES2025（2025年開催のソフトウェアエンジニアリングシンポジウム）への投稿用として配布されていたものを基にしています。これらのスタイルファイルは変更される可能性があるため、上記バージョンが配布元（[情報処理学会](http://www.ipsj.or.jp/journal/submit/style.html)、ソフトウェア工学研究会）の現行版と一致しているか、確認してください。
 
 なお、BiBTeXスタイルファイル、具体的には[ipsjsort.bst](./ipsjsort.bst) / [ipsjsort-e.bst](./ipsjsort-e.bst) / [ipsjunsrt.bst](./ipsjunsrt.bst) / [ipsjunsrt-e.bst](./ipsjunsrt-e.bst) v3.00 [2010/10/28]はそのまま使えます。
 
