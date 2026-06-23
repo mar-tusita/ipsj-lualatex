@@ -37,12 +37,14 @@ jobs:
           cp ses-sample-lualatex.tex ses-sample-lualatex.pdf _site/
           cp ses-esample.tex ses-esample.pdf _site/
           cp ses-esample-lualatex.tex ses-esample-lualatex.pdf _site/
-          mkdir -p _src
+          mkdir -p _src/_includes
           cp README.md _src
           echo "theme: minima" > _src/_config.yml
           echo "title: LuaLaTeXに対応する情報処理学会（IPSJ）の論文・研究報告用スタイルファイル" >> _src/_config.yml
           echo "titles_from_headings:" >> _src/_config.yml
-          echo "  strip_title: true" >> _src/_config.yml
+          echo "  enabled: false" >> _src/_config.yml
+          echo "" > _src/_includes/header.html
+          echo "" > _src/_includes/footer.html
 
       - uses: actions/configure-pages@v6
 
